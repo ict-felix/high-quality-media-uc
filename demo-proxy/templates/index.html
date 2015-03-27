@@ -1,0 +1,105 @@
+<head>
+    <title>Demo proxy</title>
+    <meta charset="utf-8">
+</head>    
+
+<script type=text/javascript src="{{
+  url_for('static', filename='jquery.js') }}"></script>
+  
+<script type=text/javascript>
+  $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+</script>
+
+<script type=text/javascript>
+    setInterval
+    (
+        function()
+        {        
+            $.getJSON
+            (
+                $SCRIPT_ROOT + '/playerstatus', 
+                {}, 
+                function(data) 
+                {
+                    $("#player").text("Player1 status: " + data.player);
+                }
+            );
+        },1000
+    );
+    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/playerparams/media',{}, function(data){
+        $("#stream1").text("Stream 1 params: FPS=" + data.fps1 + " | loss="+data.loss1+ " %");
+        $("#stream2").text("Stream 2 params: FPS=" + data.fps2 + " | loss="+data.loss2+ " %");
+        $("#stream3").text("Stream 3 params: FPS=" + data.fps3 + " | loss="+data.loss3+ " %");
+        $("#stream4").text("Stream 4 params: FPS=" + data.fps4 + " | loss="+data.loss4+ " %");
+        });
+    },1000); 
+
+    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/playerparams/network',{}, function(data){
+        $("#network").text("Network params: band="+data.band +" Mbps | RTT="+data.rtt+' ms');
+    });
+    },1000);      
+</script>
+
+<script>
+    $(document).ready(function(){
+        $("#startryucontroller").click( function(){
+            $.get("startryucontroller", function(){
+                console.log("Ryu Controller started" );
+            });
+        });        
+        $("#startplayers").click( function(){
+            $.get("startplayers", function(){
+                console.log("Players started" );
+            });
+        });
+        $("#stopplayers").click( function(){
+            $.get("stopplayers", function(){
+                console.log("Players stopped" );
+            });
+        });
+        $("#startstreamer1").click( function(){
+            $.get("startstreamer/0", function(){
+                console.log("Stream 1 started" );
+            });
+        });
+        $("#startstreamer2").click( function(){
+            $.get("startstreamer/1", function(){
+                console.log("Stream 2 started" );
+            });
+        }); 
+        $("#startstreamer3").click( function(){
+            $.get("startstreamer/2", function(){
+                console.log("Stream 3 started" );
+            });
+        }); 
+        $("#startstreamer4").click( function(){
+            $.get("startstreamer/3", function(){
+                console.log("Stream 4 started" );
+            });
+        });         
+    });
+</script>
+
+<h1>FELIX - Demo proxy</h1>
+
+<body>
+
+<p>  <span id=player></span><br><br>
+
+<p>  <span id=stream1></span><br>
+<p>  <span id=stream2></span><br>
+<p>  <span id=stream3></span><br>
+<p>  <span id=stream4></span><br><br>
+
+<p>  <span id=network></span><br>
+<hr>
+<button id="startryucontroller">Start Ryu Controller</button><br><br>
+
+<button id="startplayers">Start players</button><br>
+<button id="stopplayers">Stop players</button><br><br>
+
+<button id="startstreamer1">Start streamer 1</button><br>
+<button id="startstreamer2">Start streamer 2</button><br>
+<button id="startstreamer3">Start streamer 3</button><br>
+<button id="startstreamer4">Start streamer 4</button><br>
+</body>

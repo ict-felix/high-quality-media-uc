@@ -1,2 +1,1 @@
-# felix-demo-tools
-FELIX demo tools
+demo-proxy module
