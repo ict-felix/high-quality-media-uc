@@ -28,7 +28,7 @@ ryu_controller_config = {
     'hostIP':'10.134.0.236',
     'username':'felix',
     'password':'pcss',
-    'command_ryu':'PYTHONPATH=/home/felix/ryu /home/felix/ryu/bin/ryu-manager --verbose /home/felix/ryu/ryu/app/ofctl_rest.py'}    
+    'command_ryu':'PYTHONPATH=/home/felix/felix-demo-tools/ryu /home/felix/felix-demo-tools/ryu/bin/ryu-manager --verbose /home/felix/felix-demo-tools/ryu/ryu/app/ofctl_rest.py'}    
        
 app = Flask(__name__)
 
