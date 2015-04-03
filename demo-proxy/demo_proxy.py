@@ -8,7 +8,7 @@ from flask import Flask,jsonify, render_template, request
 import requests
 
 uv_streamer = [
-    {'name':'streamer1', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 2222 192.168.1.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'},
+    {'name':'streamer1', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/POT_PRZYRODA_200Mbps -P 2222 150.254.173.135','hostIP':'163.220.30.135','username':'lukaszog','password':''},
     {'name':'streamer2', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 4444 192.168.2.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'},
     {'name':'streamer3', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 6666 192.168.3.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'},
     {'name':'streamer4', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 8888 192.168.4.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'}]
@@ -107,8 +107,17 @@ class UGstreamer(threading.Thread):
         try:
             self.ssh = paramiko.SSHClient()
             self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            self.ssh.connect(self.uvparam['hostIP'], timeout=60, username=self.uvparam['username'], password=self.uvparam['password'])
-            print "Connection with player %s established"%(self.uvparam['name'])
+
+            
+            if self.uvparam['password'] == '':
+                ki = paramiko.RSAKey.from_private_key_file('/home/felix/.ssh/id_rsa')
+                print "Trying to connect with streamer %s ...."%(self.uvparam['name'])
+                self.ssh.connect(self.uvparam['hostIP'], timeout=60, username=self.uvparam['username'], pkey=ki)
+                print "Connection with streamer %s established"%(self.uvparam['name'])
+            else:
+                print "Trying to connect with streamer %s ...."%(self.uvparam['name'])
+                self.ssh.connect(self.uvparam['hostIP'], timeout=60, username=self.uvparam['username'], password=self.uvparam['password'])           
+                print "Connection with streamer %s established"%(self.uvparam['name'])
         except:  
             return
         try:    
@@ -349,6 +358,13 @@ def startstreamer(nr):
         streamer.connect()   
     return "Ok"  
 
+@app.route("/stopstreamer/<nr>")
+def stopstreamer(nr):    
+    streamer = streamer_list[int(nr)]
+    if streamer.isAlive():
+        streamer.stop()
+    return "Ok"      
+    
 @app.route("/playerparams/<resource>")
 def playerparams(resource):    
     try: 

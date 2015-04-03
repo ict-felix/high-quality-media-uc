@@ -76,7 +76,19 @@
             $.get("startstreamer/3", function(){
                 console.log("Stream 4 started" );
             });
-        });         
+        });       
+        $("#stopstreamer1").click( function(){
+            $.get("stopstreamer/0", function(){console.log("Stream 1 stopped" );});
+        });
+        $("#stopstreamer2").click( function(){
+            $.get("stopstreamer/1", function(){console.log("Stream 2 stopped" );});
+        });  
+        $("#stopstreamer3").click( function(){
+            $.get("stopstreamer/2", function(){console.log("Stream 3 stopped" );});
+        });  
+        $("#stopstreamer4").click( function(){
+            $.get("stopstreamer/3", function(){console.log("Stream 4 stopped" );});
+        });          
     });
 </script>
 
@@ -98,8 +110,12 @@
 <button id="startplayers">Start players</button><br>
 <button id="stopplayers">Stop players</button><br><br>
 
-<button id="startstreamer1">Start streamer 1</button><br>
-<button id="startstreamer2">Start streamer 2</button><br>
-<button id="startstreamer3">Start streamer 3</button><br>
-<button id="startstreamer4">Start streamer 4</button><br>
+<button id="startstreamer1">Start streamer 1</button>
+<button id="stopstreamer1">Stop streamer 1</button><br>
+<button id="startstreamer2">Start streamer 2</button>
+<button id="stopstreamer2">Stop streamer 2</button><br>
+<button id="startstreamer3">Start streamer 3</button>
+<button id="stopstreamer3">Stop streamer 3</button><br>
+<button id="startstreamer4">Start streamer 4</button>
+<button id="stopstreamer4">Stop streamer 4</button><br>
 </body>
