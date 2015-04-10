@@ -88,7 +88,11 @@
         });  
         $("#stopstreamer4").click( function(){
             $.get("stopstreamer/3", function(){console.log("Stream 4 stopped" );});
-        });          
+        });    
+
+        $("#startratelimiter").click( function(){
+            $.get("startratelimiter", function(){console.log("Rate Limiter started" );});
+        });         
     });
 </script>
 
@@ -106,6 +110,7 @@
 <p>  <span id=network></span><br>
 <hr>
 <button id="startryucontroller">Start Ryu Controller</button><br><br>
+<button id="startratelimiter">Start Rate Limiter</button><br><br>
 
 <button id="startplayers">Start players</button><br>
 <button id="stopplayers">Stop players</button><br><br>

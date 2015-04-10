@@ -5,31 +5,43 @@
 
 import os, paramiko, time, sys, threading, socket, datetime
 from flask import Flask,jsonify, render_template, request
-import requests
+import requests, json
 
 uv_streamer = [
-    {'name':'streamer1', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/POT_PRZYRODA_200Mbps -P 2222 150.254.173.135','hostIP':'163.220.30.135','username':'lukaszog','password':''},
-    {'name':'streamer2', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 4444 192.168.2.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'},
-    {'name':'streamer3', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 6666 192.168.3.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'},
-    {'name':'streamer4', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 8888 192.168.4.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'}]
+    {'name':'streamer1', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/lukaszog/TEARS_OF_STEEL_20Mbps -P 2222 150.254.173.135','hostIP':'163.220.30.135','username':'lukaszog','password':''},
+    {'name':'streamer2', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/lukaszog/TEARS_OF_STEEL_20Mbps -P 4444 150.254.173.135','hostIP':'163.220.30.135','username':'lukaszog','password':''},
+    {'name':'streamer3', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/lukaszog/TEARS_OF_STEEL_20Mbps -P 6666 150.254.173.135','hostIP':'163.220.30.135','username':'lukaszog','password':''},
+    {'name':'streamer4', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/lukaszog/TEARS_OF_STEEL_20Mbps -P 8888 150.254.173.135','hostIP':'163.220.30.135','username':'lukaszog','password':''}]
+#    {'name':'streamer2', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 4444 192.168.2.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'},
+#    {'name':'streamer3', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 6666 192.168.3.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'},
+#    {'name':'streamer4', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 8888 192.168.4.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'}]
 
 uv_player = {
-    'hostIP':'10.0.0.2',
+    'hostIP':'150.254.173.135',
     'username':'player',
-    'password':'pcss',
+    'password':'',
     'command_p1':'DISPLAY=:0.1 /home/player/ultragrid/bin/uv -d sdl -P 2222',
     'command_p2':'DISPLAY=:0.2 /home/player/ultragrid/bin/uv -d sdl -P 4444',
     'command_p3':'DISPLAY=:0.3 /home/player/ultragrid/bin/uv -d sdl -P 6666',
     'command_p4':'DISPLAY=:0.4 /home/player/ultragrid/bin/uv -d sdl -P 8888',
     'command_ifstat':'ifstat -i eth1 -b',
-    'command_ping':'ping 10.0.0.10'}
+    'command_ping':'ping 163.220.30.135'}
     
 ryu_controller_config = {
-    'hostIP':'10.134.0.236',
+    'hostIP':'127.0.0.1',
     'username':'felix',
-    'password':'pcss',
-    'command_ryu':'PYTHONPATH=/home/felix/felix-demo-tools/ryu /home/felix/felix-demo-tools/ryu/bin/ryu-manager --verbose /home/felix/felix-demo-tools/ryu/ryu/app/ofctl_rest.py'}    
-       
+    'password':'!Pcss 4.12',
+    'command_ryu':'PYTHONPATH=/home/felix/felix-demo-tools/ryu /home/felix/felix-demo-tools/ryu/bin/ryu-manager --verbose /home/felix/felix-demo-tools/ryu/ryu/app/ofctl_rest.py',
+    'flows_path1': [{'dpid':0x00000881f488f5b0, 'in_port':'28', 'ip_dst':'1.2.3.4', 'out_port':'29'},
+                    {'dpid':0x00000881f488f5b0, 'in_port':'28', 'ip_dst':'10.10.10.10', 'out_port':'29'}]
+}    
+
+rate_limiter_config = {
+    'hostIP':'163.220.30.135',
+    'username':'lukaszog',
+    'password':'',
+    'command_rate_limiter_start':'felix/pspacer-rest/uwsgi.sh'}    
+    
 app = Flask(__name__)
 
 #---------------------------------------------------------#
@@ -44,7 +56,19 @@ class RyuController(threading.Thread):
         while 1:
             while self.connected: 
                 try:
+                    
+                    try:
+                        trace = self.channel.recv(4096)
+                        try:
+                            print trace
+                        except:
+                            continue
+                    except:
+                        continue  
+                    
+                    
                     self.getFlows()
+                    self.setPath(1)
                 except:
                     None
                 time.sleep(1)
@@ -55,8 +79,17 @@ class RyuController(threading.Thread):
         try:
             self.ssh = paramiko.SSHClient()
             self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            self.ssh.connect(self.ryuparam['hostIP'], timeout=60, username=self.ryuparam['username'], password=self.ryuparam['password'])
-            print "Connection with Ryu controller established"
+            
+            if self.ryuparam['password'] == '':
+                ki = paramiko.RSAKey.from_private_key_file('/home/felix/.ssh/id_rsa')
+                print "Trying to connect with Ryu controller ...."
+                self.ssh.connect(self.ryuparam['hostIP'], timeout=60, username=self.ryuparam['username'], pkey=ki)
+                print "Connection with Ryu controller established"
+            
+            else:
+                print "Trying to connect with Ryu controller..."
+                self.ssh.connect(self.ryuparam['hostIP'], timeout=60, username=self.ryuparam['username'], password=self.ryuparam['password'])
+                print "Connection with Ryu controller established"
         except:  
             return
         try:    
@@ -68,6 +101,11 @@ class RyuController(threading.Thread):
             return
         self.connected = True
      
+    def setPath(self, path_number):
+        if path_number == 1:
+            for flow in self.ryuparam['flows_path1']:
+                self.addFlow(flow['dpid'],flow['in_port'],flow['ip_dst'],flow['out_port'])
+     
     def isConnected(self):
         return self.connected   
 
@@ -75,6 +113,36 @@ class RyuController(threading.Thread):
         response = requests.get('http://10.134.0.236:8080/stats/flow/9354246419888',
                          auth=(self.ryuparam['username'], self.ryuparam['password']))  
         print response.json()
+    
+    def addFlow(self, dpid, in_port, ip_dst, out_port):
+        
+        eth_type_list = [0x800, 0x806]
+        for eth_type in eth_type_list:
+            payload = {
+                "dpid":dpid,
+                "cookie":1,
+                "cookie_mask":1,
+                "table_id":0,
+                "idle_timeout":60,
+                "hard_timeout":60,
+                "priority":3,
+                "flags":1,
+                "match":{
+                    "in_port":in_port,
+                    "dl_type": eth_type,
+                    "nw_dst": ip_dst
+                },
+                "actions":[
+                    {
+                        "type":"OUTPUT",
+                        "port":out_port
+                    }
+                ]
+            }
+            response = requests.post('http://10.134.0.236:8080/stats/flowentry/add',
+                            data=json.dumps(payload))  
+            if response.status_code:      
+                print "Flow added"
         
     def stop(self):        
         if self.connected:
@@ -231,11 +299,19 @@ class UGplayer(threading.Thread):
             time.sleep(1)
             
     def connect(self):       
+
         try:
             self.ssh = paramiko.SSHClient()
-            self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            self.ssh.connect(self.uvparam['hostIP'], timeout=60, username=self.uvparam['username'], password=self.uvparam['password'])
-            print "Connection with Player %s established"%(self.uvparam['hostIP'])
+            self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())        
+            if self.uvparam['password'] == '':
+                ki = paramiko.RSAKey.from_private_key_file('/home/felix/.ssh/id_rsa')
+                print "Trying to connect with player %s ...."%(self.uvparam['hostIP'])
+                self.ssh.connect(self.uvparam['hostIP'], timeout=60, username=self.uvparam['username'], pkey=ki)
+                print "Connection with player %s established"%(self.uvparam['hostIP'])            
+            else:
+                print "Trying to connect with Player: %s ...."%(self.uvparam['hostIP'])
+                self.ssh.connect(self.uvparam['hostIP'], timeout=60, username=self.uvparam['username'], password=self.uvparam['password'])
+                print "Connection with Player %s established"%(self.uvparam['hostIP'])
         except:  
             return
         
@@ -307,7 +383,88 @@ class UGplayer(threading.Thread):
 player = UGplayer(uv_player) 
 players_list=['player1','player2','player3','player4']
 
-#---------------------------------------------------------#        
+#---------------------------------------------------------#
+
+#---------------------------------------------------------#
+class RateLimiter(threading.Thread):
+    def __init__(self, ratelimiterparam):
+        threading.Thread.__init__(self)
+        self.ratelimiterparam=ratelimiterparam
+        self.connected=False
+        
+    def run(self):
+        self.connect()
+        while 1:
+            while self.connected: 
+                try:
+                    trace = self.channel.recv(4096)
+                    print trace
+                except:
+                    None
+                    
+                time.sleep(1)
+            print "RL is dead? :("       
+            time.sleep(1)
+            
+    def connect(self):       
+        try:
+            self.ssh = paramiko.SSHClient()
+            self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            
+            if self.ratelimiterparam['password'] == '':
+                ki = paramiko.RSAKey.from_private_key_file('/home/felix/.ssh/id_rsa')
+                print "Trying to connect with RL ...."
+                self.ssh.connect(self.ratelimiterparam['hostIP'], timeout=60, username=self.ratelimiterparam['username'], pkey=ki)
+                print "Connection with RL established"
+            
+            else:
+                print "Trying to connect with RL..."
+                self.ssh.connect(self.ratelimiterparam['hostIP'], timeout=60, username=self.ratelimiterparam['username'], password=self.ratelimiterparam['password'])
+                print "Connection with RL established"
+        except:  
+            return
+        try:    
+            self.channel = self.ssh.get_transport().open_session()
+            self.channel.get_pty()
+            #self.channel.exec_command(self.ratelimiterparam['command_rate_limiter_start'])    
+            print "SSH channel created with RL"            
+            self.getServiceSession()
+            self.channel.setblocking(0)
+            
+        except:  
+            return
+        self.connected = True
+     
+    def isConnected(self):
+        return self.connected   
+    '''
+    def createServiceSession(self):
+        print "Rate Limiter: Creation of service session..."
+        #payload = {'bandwidth': '100mbps', 'destination': '150.254.173.135'}
+        payload = {}
+        r = requests.get("http://127.0.0.1:8000/flows/1/", data=payload, auth=('lukaszog','poznanpl'))
+        print(r.text)      
+    ''' 
+    def getServiceSession(self):
+        print "Rate Limiter: Creation of service session..."
+        #r = requests.get("http://127.0.0.1:8000/flows/1/", auth=('lukaszog','poznanpl'))
+        #print "AAAA"
+        #print(r.text)            
+        self.channel.exec_command("http --json --auth lukaszog:poznanpl GET http://127.0.0.1:8000/flows/1/")
+        
+        
+    def stop(self):        
+        if self.connected:
+            print "RL stopping"
+            self.ssh.close()  
+            self.channel.close() 
+            self.connected=False
+            print "RL stopped"
+#---------------------------------------------------------#
+
+rate_limiter = RateLimiter(rate_limiter_config)
+
+#---------------------------------------------------------#      
 @app.route("/")
 def hello():
     return render_template('index.html')
@@ -319,6 +476,14 @@ def startryucontroller():
     else:
         ryu_controller.connect()
     return "Ok"
+
+@app.route("/startratelimiter")
+def startratelimiter():  
+    if not rate_limiter.isAlive():
+        rate_limiter.start()
+    else:
+        rate_limiter.connect()
+    return "Ok" 
     
 @app.route("/startplayers")
 def startplayers():  
