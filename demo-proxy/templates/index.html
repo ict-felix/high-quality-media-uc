@@ -36,17 +36,38 @@
 
     setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/playerparams/network',{}, function(data){
         $("#network").text("Network params: band="+data.band +" Mbps | RTT="+data.rtt+' ms');
-    });
-    },1000);      
+    });},1000);      
+    
+    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getlistofsw',{}, function(data){
+        $("#OF_SW").text("List of connected OF switches: "+ data.connected_OF_SW);
+    });},1000);  
+
+    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getstatusofratelimiter',{}, function(data){
+        $("#getstatusofratelimiter").text("Status of Rate Limiter: "+ data.result);
+    });},1000);  
+        
+        
+        
+    //setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getflows',{}, function(data){
+    //    $("#OF").text("OF flows:"+data.flows);
+    //});
+    //},3000);   
 </script>
 
 <script>
     $(document).ready(function(){
-        $("#startryucontroller").click( function(){
-            $.get("startryucontroller", function(){
-                console.log("Ryu Controller started" );
-            });
-        });        
+        $("#startryucontroller").click( function(){$.get("startryucontroller", function(){
+                console.log("Ryu Controller started" );});
+        }); 
+        
+        $("#setpath1").click( function(){$.get("setpath/1", function(){
+            console.log("Set up OF path 1" );});
+        });  
+                
+        $("#delpath1").click( function(){$.get("delpath/1", function(){
+            console.log("Delete OF path 1" );});
+        });  
+         
         $("#startplayers").click( function(){
             $.get("startplayers", function(){
                 console.log("Players started" );
@@ -92,7 +113,15 @@
 
         $("#startratelimiter").click( function(){
             $.get("startratelimiter", function(){console.log("Rate Limiter started" );});
-        });         
+        });     
+        $("#createrlservicesessions").click( function(){
+            $.get("createrlservicesessions", function(){console.log("Rate Limiter sessions creation" );});
+        });
+        $("#deleteallrlservicesessions").click( function(){
+            $.get("deleteallrlservicesessions", function(){console.log("Rate Limiter sessions delete - ALL" );});
+        });           
+
+            
     });
 </script>
 
@@ -109,12 +138,25 @@
 
 <p>  <span id=network></span><br>
 <hr>
-<button id="startryucontroller">Start Ryu Controller</button><br><br>
-<button id="startratelimiter">Start Rate Limiter</button><br><br>
 
-<button id="startplayers">Start players</button><br>
-<button id="stopplayers">Stop players</button><br><br>
+<h3> Ryu - OpenFlow Controller </h3>
+<button id="startryucontroller">Start Ryu Controller</button><br>
+<button id="setpath1">Set path 1</button>
+<button id="delpath1">Delete path 1</button><br>
+<p>  <span id="OF_SW"></span><br>
+<p>  <span id="OF"></span><br>
 
+<h3> Rate Limiter @AIST </h3>
+<button id="startratelimiter">Start Rate Limiter</button><br>
+<button id="createrlservicesessions">Create servicesessions</button>
+<button id="deleteallrlservicesessions">Delete ALL service sessions</button><br>
+<p>  <span id="getstatusofratelimiter"></span><br>
+
+<h3> UG-Players </h3>
+<button id="startplayers">Start players</button>
+<button id="stopplayers">Stop players</button><br>
+
+<h3> UG-Streamers </h3>
 <button id="startstreamer1">Start streamer 1</button>
 <button id="stopstreamer1">Stop streamer 1</button><br>
 <button id="startstreamer2">Start streamer 2</button>

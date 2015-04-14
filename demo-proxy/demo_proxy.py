@@ -32,15 +32,26 @@ ryu_controller_config = {
     'username':'felix',
     'password':'!Pcss 4.12',
     'command_ryu':'PYTHONPATH=/home/felix/felix-demo-tools/ryu /home/felix/felix-demo-tools/ryu/bin/ryu-manager --verbose /home/felix/felix-demo-tools/ryu/ryu/app/ofctl_rest.py',
-    'flows_path1': [{'dpid':0x00000881f488f5b0, 'in_port':'28', 'ip_dst':'1.2.3.4', 'out_port':'29'},
-                    {'dpid':0x00000881f488f5b0, 'in_port':'28', 'ip_dst':'10.10.10.10', 'out_port':'29'}]
+    'openflow_path':{
+        1:[
+            {'dpid':0x00000881f488f5b0, 'in_port':'28', 'ip_dst':'1.2.3.4', 'out_port':'29'},
+            {'dpid':0x00000881f488f5b0, 'in_port':'28', 'ip_dst':'10.10.10.10', 'out_port':'29'}
+        ],
+        2:[]
+    }
 }    
 
 rate_limiter_config = {
     'hostIP':'163.220.30.135',
     'username':'lukaszog',
     'password':'',
-    'command_rate_limiter_start':'felix/pspacer-rest/uwsgi.sh'}    
+    'service_session_list':[
+        {'bandwidth': '200mbit', 'destination': '1.1.1.1', 'id':''},
+        {'bandwidth': '400mbit', 'destination': '2.2.2.2', 'id':''},
+        {'bandwidth': '600mbit', 'destination': '3.3.3.3', 'id':''},
+        {'bandwidth': '800mbit', 'destination': '4.4.4.4', 'id':''}
+    ]
+}    
     
 app = Flask(__name__)
 
@@ -50,27 +61,21 @@ class RyuController(threading.Thread):
         threading.Thread.__init__(self)
         self.connected=False
         self.ryuparam=ryuparam
-        
+        self.of_flows={}
     def run(self):
         self.connect()
         while 1:
             while self.connected: 
+                '''
                 try:
-                    
+                    trace = self.channel.recv(4096)
                     try:
-                        trace = self.channel.recv(4096)
-                        try:
-                            print trace
-                        except:
-                            continue
+                        print trace
                     except:
-                        continue  
-                    
-                    
-                    self.getFlows()
-                    self.setPath(1)
+                        continue
                 except:
-                    None
+                    continue  
+                '''    
                 time.sleep(1)
             print "Ryu is dead? :("       
             time.sleep(1)
@@ -95,27 +100,38 @@ class RyuController(threading.Thread):
         try:    
             self.channel = self.ssh.get_transport().open_session()
             self.channel.get_pty()
-            self.channel.exec_command(self.ryuparam['command_ryu'])    
+            self.channel.exec_command(self.ryuparam['command_ryu'])  
+            #self.channel.setblocking(0)            
             print "SSH channel created with Ryu"
         except:  
             return
         self.connected = True
-     
+    
+    def listofConnectedOFSw(self):
+        response = requests.get('http://localhost:8080/stats/switches')  
+        return response.json()
+
     def setPath(self, path_number):
-        if path_number == 1:
-            for flow in self.ryuparam['flows_path1']:
+        if path_number in self.ryuparam['openflow_path']:
+            for flow in self.ryuparam['openflow_path'][path_number]:
                 self.addFlow(flow['dpid'],flow['in_port'],flow['ip_dst'],flow['out_port'])
-     
+
+    def delPath(self, path_number):
+        if path_number in self.ryuparam['openflow_path']:
+            for flow in self.ryuparam['openflow_path'][path_number]:
+                self.delFlow(flow['dpid'],flow['in_port'],flow['ip_dst'],flow['out_port'])
+                
     def isConnected(self):
         return self.connected   
 
     def getFlows(self):
-        response = requests.get('http://10.134.0.236:8080/stats/flow/9354246419888',
-                         auth=(self.ryuparam['username'], self.ryuparam['password']))  
-        print response.json()
+        print "Reading OF flows..."
+        response = requests.get('http://localhost:8080/stats/flow/9354246419888')  
+                         #auth=(self.ryuparam['username'], self.ryuparam['password']))  
+        print "Respone: %s"%(response.text)
+        return response.text
     
     def addFlow(self, dpid, in_port, ip_dst, out_port):
-        
         eth_type_list = [0x800, 0x806]
         for eth_type in eth_type_list:
             payload = {
@@ -141,9 +157,38 @@ class RyuController(threading.Thread):
             }
             response = requests.post('http://10.134.0.236:8080/stats/flowentry/add',
                             data=json.dumps(payload))  
-            if response.status_code:      
+            if response.status_code==200:     
                 print "Flow added"
-        
+    
+    def delFlow(self, dpid, in_port, ip_dst, out_port):
+        eth_type_list = [0x800, 0x806]
+        for eth_type in eth_type_list:
+            payload = {
+                "dpid":dpid,
+                "cookie":1,
+                "cookie_mask":1,
+                "table_id":0,
+                "idle_timeout":60,
+                "hard_timeout":60,
+                "priority":3,
+                "flags":1,
+                "match":{
+                    "in_port":in_port,
+                    "dl_type": eth_type,
+                    "nw_dst": ip_dst
+                },
+                "actions":[
+                    {
+                        "type":"OUTPUT",
+                        "port":out_port
+                    }
+                ]
+            }
+            response = requests.post('http://10.134.0.236:8080/stats/flowentry/delete',
+                            data=json.dumps(payload))  
+            if response.status_code==200:      
+                print "Flow deleted"
+                
     def stop(self):        
         if self.connected:
             print "Ryu Controller stopping"
@@ -401,7 +446,7 @@ class RateLimiter(threading.Thread):
                     print trace
                 except:
                     None
-                    
+                          
                 time.sleep(1)
             print "RL is dead? :("       
             time.sleep(1)
@@ -425,10 +470,8 @@ class RateLimiter(threading.Thread):
             return
         try:    
             self.channel = self.ssh.get_transport().open_session()
-            self.channel.get_pty()
-            #self.channel.exec_command(self.ratelimiterparam['command_rate_limiter_start'])    
-            print "SSH channel created with RL"            
-            self.getServiceSession()
+            self.channel.get_pty()  
+            print "SSH channel created with RL"                        
             self.channel.setblocking(0)
             
         except:  
@@ -437,21 +480,38 @@ class RateLimiter(threading.Thread):
      
     def isConnected(self):
         return self.connected   
-    '''
-    def createServiceSession(self):
-        print "Rate Limiter: Creation of service session..."
-        #payload = {'bandwidth': '100mbps', 'destination': '150.254.173.135'}
-        payload = {}
-        r = requests.get("http://127.0.0.1:8000/flows/1/", data=payload, auth=('lukaszog','poznanpl'))
-        print(r.text)      
-    ''' 
-    def getServiceSession(self):
-        print "Rate Limiter: Creation of service session..."
-        #r = requests.get("http://127.0.0.1:8000/flows/1/", auth=('lukaszog','poznanpl'))
-        #print "AAAA"
-        #print(r.text)            
-        self.channel.exec_command("http --json --auth lukaszog:poznanpl GET http://127.0.0.1:8000/flows/1/")
         
+    def createServiceSessions(self):
+        print "Rate Limiter: Creation of service session..."
+        for service_session in self.ratelimiterparam['service_session_list']:
+            payload = {'bandwidth':service_session['bandwidth'], 'destination':service_session['destination']}
+            print payload
+            r = requests.post("http://163.220.30.135:8000/flows/", data=payload, auth=('lukaszog','poznanpl'))            
+            print "Status:%s | Response:%s"%(r.status_code, r.json())       
+            if r.status_code == 201:
+                service_session['id'] = "%s"%r.json()['id']
+
+    def getStatusofRL(self): 
+        for service_session in self.ratelimiterparam['service_session_list']:
+            if service_session['id'] != '':        
+                r = requests.get("http://163.220.30.135:8000/flows/"+service_session['id']+"/", auth=('lukaszog','poznanpl'))
+                return r.text
+            
+    def getServiceSession(self,number):
+        print "Rate Limiter: getting Service Session..."
+        r = requests.get("http://163.220.30.135:8000/flows/%s/"%(number), auth=('lukaszog','poznanpl'))
+        print "Status:%s | Response:%s"%(r.status_code, r.json())        
+
+    def deleteAllServiceSessions(self):     
+        print "Rate Limiter: Delete ALL service session..."
+        for service_session in self.ratelimiterparam['service_session_list']:
+            if service_session['id'] != '': 
+                self.deleteServiceSession(int(service_session['id']))
+        
+    def deleteServiceSession(self,number):
+        print "Rate Limiter: deleting ServiceSession..."
+        r = requests.delete("http://163.220.30.135:8000/flows/%s/"%(number), auth=('lukaszog','poznanpl'))
+        print "Status:%s | Response:%s"%(r.status_code, r.json())     
         
     def stop(self):        
         if self.connected:
@@ -476,7 +536,36 @@ def startryucontroller():
     else:
         ryu_controller.connect()
     return "Ok"
+    
+@app.route("/setpath/<nr>")
+def setpath(nr):    
+    if ryu_controller.isAlive():
+        ryu_controller.setPath(int(nr))
+    return "Ok"  
 
+@app.route("/delpath/<nr>")
+def delpath(nr):    
+    if ryu_controller.isAlive():
+        ryu_controller.delPath(int(nr))
+    return "Ok"  
+    
+@app.route("/getflows")
+def getflows():    
+    if ryu_controller.isAlive():
+        return jsonify(flows=ryu_controller.getFlows())
+    return "Ok"
+  
+@app.route("/getlistofsw")
+def getlistofsw():    
+    if ryu_controller.isAlive():
+        of_sw_list = ryu_controller.listofConnectedOFSw()
+        of_sw_hex_list = []
+        for sw in of_sw_list:
+            of_sw_hex_list.append(hex(sw))
+        return jsonify(connected_OF_SW=of_sw_hex_list)
+    return "Ok"  
+
+# --- RL: ---
 @app.route("/startratelimiter")
 def startratelimiter():  
     if not rate_limiter.isAlive():
@@ -484,6 +573,26 @@ def startratelimiter():
     else:
         rate_limiter.connect()
     return "Ok" 
+    
+@app.route("/createrlservicesessions")
+def createrlservicesessions():  
+    if rate_limiter.isAlive():
+        rate_limiter.createServiceSessions()
+    return "Ok"     
+
+@app.route("/deleteallrlservicesessions")
+def deleteallrlservicesessions():  
+    if rate_limiter.isAlive():
+        rate_limiter.deleteAllServiceSessions()
+    return "Ok"         
+    
+@app.route("/getstatusofratelimiter")
+def getstatusofratelimiter():  
+    if rate_limiter.isAlive():        
+        return jsonify(result=rate_limiter.getStatusofRL())
+    return "Ok" 
+
+# --- Players: ---   
     
 @app.route("/startplayers")
 def startplayers():  
@@ -570,7 +679,9 @@ if __name__ == "__main__":
         if ryu_controller.isAlive():
             ryu_controller.stop()  
 
-                
+        if rate_limiter.isAlive():
+            rate_limiter.stop()
+              
         import os, signal
         os._exit(1)        
         pid = os.getpid()
