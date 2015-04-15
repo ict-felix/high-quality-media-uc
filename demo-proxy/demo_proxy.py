@@ -7,11 +7,18 @@ import os, paramiko, time, sys, threading, socket, datetime
 from flask import Flask,jsonify, render_template, request
 import requests, json
 
+player_IP = {
+    1:'150.254.173.135',
+    2:'150.254.173.135',
+    3:'150.254.173.135',
+    4:'150.254.173.135'
+}
+
 uv_streamer = [
-    {'name':'streamer1', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/lukaszog/TEARS_OF_STEEL_20Mbps -P 2222 150.254.173.135','hostIP':'163.220.30.135','username':'lukaszog','password':''},
-    {'name':'streamer2', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/lukaszog/TEARS_OF_STEEL_20Mbps -P 4444 150.254.173.135','hostIP':'163.220.30.135','username':'lukaszog','password':''},
-    {'name':'streamer3', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/lukaszog/TEARS_OF_STEEL_20Mbps -P 6666 150.254.173.135','hostIP':'163.220.30.135','username':'lukaszog','password':''},
-    {'name':'streamer4', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/lukaszog/TEARS_OF_STEEL_20Mbps -P 8888 150.254.173.135','hostIP':'163.220.30.135','username':'lukaszog','password':''}]
+    {'name':'streamer1', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/POT_PRZYRODA_200Mbps -P 2222 '+player_IP[1],'hostIP':'163.220.30.135','username':'lukaszog','password':''},
+    {'name':'streamer2', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/lukaszog/TEARS_OF_STEEL_20Mbps -P 4444 '+player_IP[2],'hostIP':'163.220.30.135','username':'lukaszog','password':''},
+    {'name':'streamer3', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/lukaszog/TEARS_OF_STEEL_20Mbps -P 6666 '+player_IP[3],'hostIP':'163.220.30.135','username':'lukaszog','password':''},
+    {'name':'streamer4', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/lukaszog/TEARS_OF_STEEL_20Mbps -P 8888 '+player_IP[4],'hostIP':'163.220.30.135','username':'lukaszog','password':''}]
 #    {'name':'streamer2', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 4444 192.168.2.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'},
 #    {'name':'streamer3', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 6666 192.168.3.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'},
 #    {'name':'streamer4', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 8888 192.168.4.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'}]
@@ -24,7 +31,7 @@ uv_player = {
     'command_p2':'DISPLAY=:0.2 /home/player/ultragrid/bin/uv -d sdl -P 4444',
     'command_p3':'DISPLAY=:0.3 /home/player/ultragrid/bin/uv -d sdl -P 6666',
     'command_p4':'DISPLAY=:0.4 /home/player/ultragrid/bin/uv -d sdl -P 8888',
-    'command_ifstat':'ifstat -i eth1 -b',
+    'command_ifstat':'ifstat -i eth0 -b',
     'command_ping':'ping 163.220.30.135'}
     
 ryu_controller_config = {
@@ -106,6 +113,7 @@ class RyuController(threading.Thread):
         except:  
             return
         self.connected = True
+        return "TEST CONNECT - RYU"
     
     def listofConnectedOFSw(self):
         response = requests.get('http://localhost:8080/stats/switches')  
@@ -529,6 +537,7 @@ rate_limiter = RateLimiter(rate_limiter_config)
 def hello():
     return render_template('index.html')
 
+# --- OpenFlow Controller - Ryu ---
 @app.route("/startryucontroller")
 def startryucontroller():  
     if not ryu_controller.isAlive():
@@ -536,6 +545,10 @@ def startryucontroller():
     else:
         ryu_controller.connect()
     return "Ok"
+    
+@app.route("/getryustatus")
+def getryustatus():  
+    return jsonify(result=ryu_controller.isConnected())
     
 @app.route("/setpath/<nr>")
 def setpath(nr):    
@@ -610,19 +623,23 @@ def stopplayers():
   
 @app.route('/playerstatus')
 def playerstatus():
-    status="Unknown"
-    try:
-        if player.isAlive():
-            if player.isConnected():
-                status="alive: connected"
-            else:
-                status="alive: not connected"
-        else:
-            status="not alive"
-        return jsonify(player=status)
+    return jsonify(result=player.isConnected())
+
+@app.route("/playerparams/<resource>")
+def playerparams(resource):    
+    try: 
+        if resource == 'media':
+            return jsonify(fps1=player.getFPS('player1'),loss1=player.getLoss('player1'),
+            fps2=player.getFPS('player2'),loss2=player.getLoss('player2'),
+            fps3=player.getFPS('player3'),loss3=player.getLoss('player3'),
+            fps4=player.getFPS('player4'),loss4=player.getLoss('player4'))
+        if resource == 'network':
+            return jsonify(band=player.getBand(),rtt=player.getRTT())
     except:
-        return jsonify(result="error")  
-  
+        return jsonify(result="error")       
+    return "Ok"
+        
+# --- UG - streamer ---
 @app.route("/startstreamer/<nr>")
 def startstreamer(nr):    
     streamer = streamer_list[int(nr)]
@@ -637,22 +654,15 @@ def stopstreamer(nr):
     streamer = streamer_list[int(nr)]
     if streamer.isAlive():
         streamer.stop()
-    return "Ok"      
-    
-@app.route("/playerparams/<resource>")
-def playerparams(resource):    
-    try: 
-        if resource == 'media':
-            return jsonify(fps1=player.getFPS('player1'),loss1=player.getLoss('player1'),
-            fps2=player.getFPS('player2'),loss2=player.getLoss('player2'),
-            fps3=player.getFPS('player3'),loss3=player.getLoss('player3'),
-            fps4=player.getFPS('player4'),loss4=player.getLoss('player4'))
-        if resource == 'network':
-            return jsonify(band=player.getBand(),rtt=player.getRTT())
-    except:
-        return jsonify(result="error")       
-    return "Ok"
-   
+    return "Ok"    
+
+@app.route("/streamerstatus")
+def streamerstatus():    
+    status = []
+    for streamer in streamer_list:
+        status.append(streamer.isConnected())
+    return jsonify(result=status)
+        
 #---------------------------------------------------------#  
 if __name__ == "__main__":
     

@@ -11,21 +11,18 @@
 </script>
 
 <script type=text/javascript>
-    setInterval
-    (
-        function()
-        {        
-            $.getJSON
-            (
-                $SCRIPT_ROOT + '/playerstatus', 
-                {}, 
-                function(data) 
-                {
-                    $("#player").text("Player1 status: " + data.player);
-                }
-            );
-        },1000
-    );
+    setInterval(function(){ $.getJSON($SCRIPT_ROOT + '/playerstatus', {}, function(data) {
+        //$("#player").text("UG-player status: " + data.result);
+        if (data.result == true)
+        {
+            $("#player").text("UG-player is connected ");
+        }
+        else
+        {
+            $("#player").text("UG-player not connected ");
+        }
+    });},1000);
+    
     setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/playerparams/media',{}, function(data){
         $("#stream1").text("Stream 1 params: FPS=" + data.fps1 + " | loss="+data.loss1+ " %");
         $("#stream2").text("Stream 2 params: FPS=" + data.fps2 + " | loss="+data.loss2+ " %");
@@ -45,17 +42,28 @@
     setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getstatusofratelimiter',{}, function(data){
         $("#getstatusofratelimiter").text("Status of Rate Limiter: "+ data.result);
     });},1000);  
-        
-        
-        
-    //setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getflows',{}, function(data){
-    //    $("#OF").text("OF flows:"+data.flows);
-    //});
-    //},3000);   
+
+    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getryustatus',{}, function(data){
+        if (data.result == true)
+        {
+            $("#getryustatus").text("Ryu controller is connected ");
+        }
+        else
+        {
+            $("#getryustatus").text("Ryu controller not connected ");
+        }
+    });},1000); 
+
+    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/streamerstatus',{}, function(data){
+        $("#streamerstatus").text("Streamer status: 1-"+data.result[0]+" | 2-"+data.result[1]+" | 3-"+data.result[2]+" | 4-"+data.result[3]);
+    });},1000);      
+
+         
 </script>
 
 <script>
     $(document).ready(function(){
+        // OF_CTRL:
         $("#startryucontroller").click( function(){$.get("startryucontroller", function(){
                 console.log("Ryu Controller started" );});
         }); 
@@ -68,35 +76,26 @@
             console.log("Delete OF path 1" );});
         });  
          
+        //UG-player: 
         $("#startplayers").click( function(){
-            $.get("startplayers", function(){
-                console.log("Players started" );
-            });
+            $.get("startplayers", function(){console.log("Players started" );});
         });
         $("#stopplayers").click( function(){
-            $.get("stopplayers", function(){
-                console.log("Players stopped" );
-            });
+            $.get("stopplayers", function(){console.log("Players stopped" );});
         });
+        
+        //UG-streamer:
         $("#startstreamer1").click( function(){
-            $.get("startstreamer/0", function(){
-                console.log("Stream 1 started" );
-            });
+            $.get("startstreamer/0", function(){console.log("Stream 1 started" );});
         });
         $("#startstreamer2").click( function(){
-            $.get("startstreamer/1", function(){
-                console.log("Stream 2 started" );
-            });
+            $.get("startstreamer/1", function(){console.log("Stream 2 started" );});
         }); 
         $("#startstreamer3").click( function(){
-            $.get("startstreamer/2", function(){
-                console.log("Stream 3 started" );
-            });
+            $.get("startstreamer/2", function(){console.log("Stream 3 started" );});
         }); 
         $("#startstreamer4").click( function(){
-            $.get("startstreamer/3", function(){
-                console.log("Stream 4 started" );
-            });
+            $.get("startstreamer/3", function(){console.log("Stream 4 started" );});
         });       
         $("#stopstreamer1").click( function(){
             $.get("stopstreamer/0", function(){console.log("Stream 1 stopped" );});
@@ -110,7 +109,8 @@
         $("#stopstreamer4").click( function(){
             $.get("stopstreamer/3", function(){console.log("Stream 4 stopped" );});
         });    
-
+        
+        //RL:
         $("#startratelimiter").click( function(){
             $.get("startratelimiter", function(){console.log("Rate Limiter started" );});
         });     
@@ -120,43 +120,29 @@
         $("#deleteallrlservicesessions").click( function(){
             $.get("deleteallrlservicesessions", function(){console.log("Rate Limiter sessions delete - ALL" );});
         });           
-
-            
+      
     });
 </script>
 
 <h1>FELIX - Demo proxy</h1>
 
 <body>
-
-<p>  <span id=player></span><br><br>
-
-<p>  <span id=stream1></span><br>
-<p>  <span id=stream2></span><br>
-<p>  <span id=stream3></span><br>
-<p>  <span id=stream4></span><br><br>
-
-<p>  <span id=network></span><br>
 <hr>
-
-<h3> Ryu - OpenFlow Controller </h3>
-<button id="startryucontroller">Start Ryu Controller</button><br>
-<button id="setpath1">Set path 1</button>
-<button id="delpath1">Delete path 1</button><br>
-<p>  <span id="OF_SW"></span><br>
-<p>  <span id="OF"></span><br>
-
-<h3> Rate Limiter @AIST </h3>
-<button id="startratelimiter">Start Rate Limiter</button><br>
-<button id="createrlservicesessions">Create servicesessions</button>
-<button id="deleteallrlservicesessions">Delete ALL service sessions</button><br>
-<p>  <span id="getstatusofratelimiter"></span><br>
-
-<h3> UG-Players </h3>
+<h3> UltraGrid - Player </h3>
 <button id="startplayers">Start players</button>
 <button id="stopplayers">Stop players</button><br>
+  <p><span id=player></span><br>
+  <p><span id=stream1></span><br>
+     <span id=stream2></span><br>
+     <span id=stream3></span><br>
+     <span id=stream4></span><br>
 
-<h3> UG-Streamers </h3>
+<hr>
+<h3> Network params @UG-player </h3> 
+<p>  <span id=network></span><br>
+
+<hr>
+<h3> UltraGrid - Streamer </h3>
 <button id="startstreamer1">Start streamer 1</button>
 <button id="stopstreamer1">Stop streamer 1</button><br>
 <button id="startstreamer2">Start streamer 2</button>
@@ -165,4 +151,22 @@
 <button id="stopstreamer3">Stop streamer 3</button><br>
 <button id="startstreamer4">Start streamer 4</button>
 <button id="stopstreamer4">Stop streamer 4</button><br>
+    <p>  <span id=streamerstatus></span><br>
+    
+<hr>
+<h3> Ryu - OpenFlow Controller </h3>
+<button id="startryucontroller">Start Ryu Controller</button><br>
+<p><span id="getryustatus"></span><br>
+   <span id="OF_SW"></span><br>
+   <span id="OF"></span><br>
+<button id="setpath1">Set path 1</button>
+<button id="delpath1">Delete path 1</button><br>
+
+<hr>
+<h3> Rate Limiter @AIST </h3>
+<button id="startratelimiter">Start Rate Limiter</button><br>
+<button id="createrlservicesessions">Create servicesessions</button>
+<button id="deleteallrlservicesessions">Delete ALL service sessions</button><br>
+<p>  <span id="getstatusofratelimiter"></span><br>
+
 </body>
