@@ -16,9 +16,9 @@ player_IP = {
 
 uv_streamer = [
     {'name':'streamer1', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/POT_PRZYRODA_200Mbps -P 2222 '+player_IP[1],'hostIP':'163.220.30.135','username':'lukaszog','password':''},
-    {'name':'streamer2', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/lukaszog/TEARS_OF_STEEL_20Mbps -P 4444 '+player_IP[2],'hostIP':'163.220.30.135','username':'lukaszog','password':''},
-    {'name':'streamer3', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/lukaszog/TEARS_OF_STEEL_20Mbps -P 6666 '+player_IP[3],'hostIP':'163.220.30.135','username':'lukaszog','password':''},
-    {'name':'streamer4', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/lukaszog/TEARS_OF_STEEL_20Mbps -P 8888 '+player_IP[4],'hostIP':'163.220.30.135','username':'lukaszog','password':''}]
+    {'name':'streamer2', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/TEARS_OF_STEEL_200Mbps -P 4444 '+player_IP[2],'hostIP':'163.220.30.135','username':'lukaszog','password':''},
+    {'name':'streamer3', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/POT_PRZYRODA_200Mbps -P 6666 '+player_IP[3],'hostIP':'163.220.30.135','username':'lukaszog','password':''},
+    {'name':'streamer4', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/POT_PRZYRODA_200Mbps -P 8888 '+player_IP[4],'hostIP':'163.220.30.135','username':'lukaszog','password':''}]
 #    {'name':'streamer2', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 4444 192.168.2.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'},
 #    {'name':'streamer3', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 6666 192.168.3.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'},
 #    {'name':'streamer4', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 8888 192.168.4.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'}]
@@ -41,11 +41,34 @@ ryu_controller_config = {
     'command_ryu':'PYTHONPATH=/home/felix/felix-demo-tools/ryu /home/felix/felix-demo-tools/ryu/bin/ryu-manager --verbose /home/felix/felix-demo-tools/ryu/ryu/app/ofctl_rest.py',
     'openflow_path':{
         1:[
+            # --- AIST
+            # --- KDDI
+            # --- PSNC
             {'dpid':0x00000881f488f5b0, 'in_port':'28', 'ip_dst':'1.2.3.4', 'out_port':'29'},
-            {'dpid':0x00000881f488f5b0, 'in_port':'28', 'ip_dst':'10.10.10.10', 'out_port':'29'}
+            {'dpid':0x00000881f488f5b0, 'in_port':'28', 'ip_dst':'10.10.10.10', 'out_port':'29'},
+            # --- PSNC (Mininet test):
+            {'dpid':0x0000000000000001, 'in_port':'1', 'ip_dst':'7.7.7.7', 'out_port':'2'}
+            
+            
+            # --- iMinds
+            # --- i2cat            
         ],
-        2:[]
-    }
+        2:[
+            # --- AIST
+            # --- KDDI
+            # --- PSNC
+            
+            # --- PSNC (Mininet test):
+            {'dpid':0x0000000000000001, 'in_port':'1', 'ip_dst':'8.8.8.8', 'out_port':'2'}            
+            
+            # --- iMinds
+            # --- i2cat
+        ]
+    },
+    'of_sw_list' : [
+        # PSNC
+        0x00000881f488f5b0, 0x0000000000000001]
+    
 }    
 
 rate_limiter_config = {
@@ -133,12 +156,12 @@ class RyuController(threading.Thread):
         return self.connected   
 
     def getFlows(self):
-        print "Reading OF flows..."
-        response = requests.get('http://localhost:8080/stats/flow/9354246419888')  
-                         #auth=(self.ryuparam['username'], self.ryuparam['password']))  
-        print "Respone: %s"%(response.text)
-        return response.text
-    
+        flows = {}
+        for of_sw in self.ryuparam['of_sw_list']:
+            response = requests.get('http://localhost:8080/stats/flow/'+str(of_sw))
+            flows[str(hex(of_sw))]=response.json()           
+        return flows
+        
     def addFlow(self, dpid, in_port, ip_dst, out_port):
         eth_type_list = [0x800, 0x806]
         for eth_type in eth_type_list:
@@ -280,6 +303,8 @@ class UGplayer(threading.Thread):
             'player3':{'fps':None,'loss':None},
             'player4':{'fps':None,'loss':None}
         }
+        self.livestreaming_cntr_on = 5
+        self.livestreaming_cntr = [0,0,0,0]
         
     def run(self):
         self.connect()
@@ -313,8 +338,13 @@ class UGplayer(threading.Thread):
                         self.params['player1']['fps']=float(((trace.split('=')[1]).split('FPS')[0]).strip())
                     if ('packets expected' in trace)and('%' in trace):
                         self.params['player1']['loss']=100-float((((trace.split('(')[1]).split(')')[0]).split('%')[0]).strip())
+                    
+                    if (('[SDL]' in trace)or('FPS' in trace)or('packets expected' in trace)or('%' in trace))and(self.livestreaming_cntr[0] <= self.livestreaming_cntr_on):
+                        self.livestreaming_cntr[0] = self.livestreaming_cntr_on 
+
                 except:
-                    None
+                    if self.livestreaming_cntr[0] > 0:                        
+                        self.livestreaming_cntr[0]=self.livestreaming_cntr[0]-1
                 
                 # --- channel_p2 (UltraGrid) ---
                 try:
@@ -323,8 +353,12 @@ class UGplayer(threading.Thread):
                         self.params['player2']['fps']=float(((trace.split('=')[1]).split('FPS')[0]).strip())
                     if ('packets expected' in trace)and('%' in trace):
                         self.params['player2']['loss']=100-float((((trace.split('(')[1]).split(')')[0]).split('%')[0]).strip())
+                        
+                    if (('[SDL]' in trace)or('FPS' in trace)or('packets expected' in trace)or('%' in trace))and(self.livestreaming_cntr[1] <= self.livestreaming_cntr_on):
+                        self.livestreaming_cntr[1] = self.livestreaming_cntr_on 
                 except:
-                    None                
+                    if self.livestreaming_cntr[1] > 0:                        
+                        self.livestreaming_cntr[1]=self.livestreaming_cntr[1]-1              
                 
                 # --- channel_p3 (UltraGrid) ---
                 try:
@@ -333,8 +367,12 @@ class UGplayer(threading.Thread):
                         self.params['player3']['fps']=float(((trace.split('=')[1]).split('FPS')[0]).strip())
                     if ('packets expected' in trace)and('%' in trace):
                         self.params['player3']['loss']=100-float((((trace.split('(')[1]).split(')')[0]).split('%')[0]).strip())
+                   
+                    if (('[SDL]' in trace)or('FPS' in trace)or('packets expected' in trace)or('%' in trace))and(self.livestreaming_cntr[2] <= self.livestreaming_cntr_on):
+                        self.livestreaming_cntr[2] = self.livestreaming_cntr_on                         
                 except:
-                    None
+                    if self.livestreaming_cntr[2] > 0:                        
+                        self.livestreaming_cntr[2]=self.livestreaming_cntr[2]-1
                     
                 # --- channel_p4 (UltraGrid) ---
                 try:
@@ -343,8 +381,12 @@ class UGplayer(threading.Thread):
                         self.params['player4']['fps']=float(((trace.split('=')[1]).split('FPS')[0]).strip())
                     if ('packets expected' in trace)and('%' in trace):
                         self.params['player4']['loss']=100-float((((trace.split('(')[1]).split(')')[0]).split('%')[0]).strip())
+                    
+                    if (('[SDL]' in trace)or('FPS' in trace)or('packets expected' in trace)or('%' in trace))and(self.livestreaming_cntr[3] <= self.livestreaming_cntr_on):
+                        self.livestreaming_cntr[3] = self.livestreaming_cntr_on 
                 except:
-                    None
+                    if self.livestreaming_cntr[3] > 0:                        
+                        self.livestreaming_cntr[3]=self.livestreaming_cntr[3]-1
                     
                 time.sleep(1) 
 
@@ -369,11 +411,12 @@ class UGplayer(threading.Thread):
             return
         
         try:    
+
             self.channel_p1 = self.ssh.get_transport().open_session()
             self.channel_p1.get_pty()
             self.channel_p1.exec_command(self.uvparam['command_p1'])  
             self.channel_p1.setblocking(0)
-
+            
             self.channel_p2 = self.ssh.get_transport().open_session()
             self.channel_p2.get_pty()
             self.channel_p2.exec_command(self.uvparam['command_p2'])  
@@ -407,7 +450,17 @@ class UGplayer(threading.Thread):
      
     def isConnected(self):
         return self.connected
-                   
+                    
+    def isLifeStreamingOn(self,number):
+        print "Map of on-line streaming cntr: %s"%(self.livestreaming_cntr)
+        if self.connected:
+            if self.livestreaming_cntr[number] > 0:
+                return True
+            else:
+                return False
+        else:
+            return False
+                
     def getFPS(self,player):
         return self.params[player]['fps']
     
@@ -435,8 +488,6 @@ class UGplayer(threading.Thread):
 
 player = UGplayer(uv_player) 
 players_list=['player1','player2','player3','player4']
-
-#---------------------------------------------------------#
 
 #---------------------------------------------------------#
 class RateLimiter(threading.Thread):
@@ -500,10 +551,8 @@ class RateLimiter(threading.Thread):
                 service_session['id'] = "%s"%r.json()['id']
 
     def getStatusofRL(self): 
-        for service_session in self.ratelimiterparam['service_session_list']:
-            if service_session['id'] != '':        
-                r = requests.get("http://163.220.30.135:8000/flows/"+service_session['id']+"/", auth=('lukaszog','poznanpl'))
-                return r.text
+        r = requests.get("http://163.220.30.135:8000/flows/", auth=('lukaszog','poznanpl')) 
+        return r.json()[0]
             
     def getServiceSession(self,number):
         print "Rate Limiter: getting Service Session..."
@@ -532,12 +581,12 @@ class RateLimiter(threading.Thread):
 
 rate_limiter = RateLimiter(rate_limiter_config)
 
-#---------------------------------------------------------#      
-@app.route("/")
+#--- Admin Panel -----------------------------------------#      
+@app.route("/demo_proxy_admin_panel")
 def hello():
     return render_template('index.html')
 
-# --- OpenFlow Controller - Ryu ---
+# --- OpenFlow Controller - Ryu ---------------------------
 @app.route("/startryucontroller")
 def startryucontroller():  
     if not ryu_controller.isAlive():
@@ -565,7 +614,8 @@ def delpath(nr):
 @app.route("/getflows")
 def getflows():    
     if ryu_controller.isAlive():
-        return jsonify(flows=ryu_controller.getFlows())
+        flows = ryu_controller.getFlows()
+        return jsonify(**flows)
     return "Ok"
   
 @app.route("/getlistofsw")
@@ -578,7 +628,7 @@ def getlistofsw():
         return jsonify(connected_OF_SW=of_sw_hex_list)
     return "Ok"  
 
-# --- RL: ---
+# --- RL: --------------------------------------------
 @app.route("/startratelimiter")
 def startratelimiter():  
     if not rate_limiter.isAlive():
@@ -586,6 +636,12 @@ def startratelimiter():
     else:
         rate_limiter.connect()
     return "Ok" 
+    
+@app.route("/setband/<band>")
+def setband(band):    
+    if rate_limiter.isAlive():
+        rate_limiter.setBand(int(band))
+    return "Ok"  
     
 @app.route("/createrlservicesessions")
 def createrlservicesessions():  
@@ -601,14 +657,21 @@ def deleteallrlservicesessions():
     
 @app.route("/getstatusofratelimiter")
 def getstatusofratelimiter():  
-    if rate_limiter.isAlive():        
-        return jsonify(result=rate_limiter.getStatusofRL())
+    if rate_limiter.isAlive():     
+        rl_status = rate_limiter.getStatusofRL()
+        return jsonify(**rl_status)
     return "Ok" 
 
-# --- Players: ---   
-    
+# --- Players: ------------------------------------------   
 @app.route("/startplayers")
 def startplayers():  
+    '''
+    Should be call once 
+    - to enable channel to UG-player
+    - to run four UG players
+    - to receive media params (FPS and frames losses)
+    - to receive network params (bandwidth on the interface and RTT to AIST)
+    '''
     if not player.isAlive():
         player.start()
     else:
@@ -617,29 +680,55 @@ def startplayers():
     
 @app.route("/stopplayers")
 def stopplayers():
+    '''
+    To stop UG-player
+    '''
     if player.isAlive():
         player.stop()       
     return "Ok"
   
 @app.route('/playerstatus')
 def playerstatus():
-    return jsonify(result=player.isConnected())
+    '''
+    To check if channel with UG-player is established
+    '''
+    return jsonify(isconnected=player.isConnected(), islive_1=player.isLifeStreamingOn(0),islive_2=player.isLifeStreamingOn(1),islive_3=player.isLifeStreamingOn(2),islive_4=player.isLifeStreamingOn(3))
 
 @app.route("/playerparams/<resource>")
 def playerparams(resource):    
     try: 
         if resource == 'media':
-            return jsonify(fps1=player.getFPS('player1'),loss1=player.getLoss('player1'),
-            fps2=player.getFPS('player2'),loss2=player.getLoss('player2'),
-            fps3=player.getFPS('player3'),loss3=player.getLoss('player3'),
-            fps4=player.getFPS('player4'),loss4=player.getLoss('player4'))
+
+            islive_list = [player.isLifeStreamingOn(0),
+                player.isLifeStreamingOn(1),
+                player.isLifeStreamingOn(2),
+                player.isLifeStreamingOn(3)]
+        
+            fps_list = [0,0,0,0]
+            loss_list = [0,0,0,0]
+            
+            index=0
+            for item in islive_list:
+                if item:
+                    fps_list[index] = player.getFPS(str(players_list[index]))
+                    loss_list[index] = player.getLoss(str(players_list[index]))
+                index = index+1
+                
+            return jsonify(fps1=fps_list[0],loss1=loss_list[0],
+                fps2=fps_list[1],loss2=loss_list[1],
+                fps3=fps_list[2],loss3=loss_list[2],
+                fps4=fps_list[3],loss4=loss_list[3])
+         
         if resource == 'network':
-            return jsonify(band=player.getBand(),rtt=player.getRTT())
+            if player.isConnected():
+                return jsonify(band=player.getBand(),rtt=player.getRTT())
+            else:
+                return jsonify(band=0,rtt=0)
     except:
         return jsonify(result="error")       
     return "Ok"
         
-# --- UG - streamer ---
+# --- UG - streamer -----------------------------------
 @app.route("/startstreamer/<nr>")
 def startstreamer(nr):    
     streamer = streamer_list[int(nr)]
@@ -661,8 +750,7 @@ def streamerstatus():
     status = []
     for streamer in streamer_list:
         status.append(streamer.isConnected())
-    return jsonify(result=status)
-        
+    return jsonify(result=status)  
 #---------------------------------------------------------#  
 if __name__ == "__main__":
     

@@ -13,14 +13,21 @@
 <script type=text/javascript>
     setInterval(function(){ $.getJSON($SCRIPT_ROOT + '/playerstatus', {}, function(data) {
         //$("#player").text("UG-player status: " + data.result);
-        if (data.result == true)
-        {
-            $("#player").text("UG-player is connected ");
-        }
-        else
-        {
-            $("#player").text("UG-player not connected ");
-        }
+        if (data.isconnected == true){$("#player").text("UG-player is connected ");}
+        else{$("#player").text("UG-player not connected ");}
+        
+        if (data.islive_1 == true){$("#playerlive_1").text("Live streaming #1 on");}
+        else{$("#playerlive_1").text("Live streaming #1 off");}
+        
+        if (data.islive_2 == true){$("#playerlive_2").text("Live streaming #2 on");}
+        else {$("#playerlive_2").text("Live streaming #2 off");}
+        
+        if (data.islive_3 == true){$("#playerlive_3").text("Live streaming #3 on");}
+        else {$("#playerlive_3").text("Live streaming #3 off");}
+        
+        if (data.islive_4 == true){$("#playerlive_4").text("Live streaming #4 on");}
+        else {$("#playerlive_4").text("Live streaming #4 off");}
+        
     });},1000);
     
     setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/playerparams/media',{}, function(data){
@@ -38,9 +45,15 @@
     setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getlistofsw',{}, function(data){
         $("#OF_SW").text("List of connected OF switches: "+ data.connected_OF_SW);
     });},1000);  
+    
+    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getflows',{}, function(data){
+         $("#OF").text(JSON.stringify(data, null, '\t'));
+    });},1000);
 
     setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getstatusofratelimiter',{}, function(data){
-        $("#getstatusofratelimiter").text("Status of Rate Limiter: "+ data.result);
+        //$("#getstatusofratelimiter").text("Status of Rate Limiter: "+ data.result);
+        
+        $("#RL").text(JSON.stringify(data, null, '\t'));
     });},1000);  
 
     setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getryustatus',{}, function(data){
@@ -124,6 +137,23 @@
     });
 </script>
 
+<script>
+function setPath(id)
+{
+    $.get("setpath/".concat(id), function(){});
+}
+function delPath(id)
+{
+    $.get("delpath/".concat(id), function(){});     
+}
+function setBand(band)
+{
+    $.get("setband/".concat(band), function(){});     
+}
+</script>
+
+
+
 <h1>FELIX - Demo proxy</h1>
 
 <body>
@@ -132,6 +162,10 @@
 <button id="startplayers">Start players</button>
 <button id="stopplayers">Stop players</button><br>
   <p><span id=player></span><br>
+  <p><span id=playerlive_1></span><br>
+     <span id=playerlive_2></span><br>
+     <span id=playerlive_3></span><br>
+     <span id=playerlive_4></span><br>
   <p><span id=stream1></span><br>
      <span id=stream2></span><br>
      <span id=stream3></span><br>
@@ -158,15 +192,32 @@
 <button id="startryucontroller">Start Ryu Controller</button><br>
 <p><span id="getryustatus"></span><br>
    <span id="OF_SW"></span><br>
-   <span id="OF"></span><br>
-<button id="setpath1">Set path 1</button>
-<button id="delpath1">Delete path 1</button><br>
+   <pre><code id=OF></code></pre>
+
+   <button id="1" onClick="setPath(this.id)">Set path 1</button>
+   <button id="2" onClick="setPath(this.id)">Set path 2</button>
+   <button id="3" onClick="setPath(this.id)">Set path 3</button>
+   <button id="4" onClick="setPath(this.id)">Set path 4</button><br>
+   <button id="1" onClick="delPath(this.id)">Delete path 1</button>
+   <button id="2" onClick="delPath(this.id)">Delete path 2</button>
+   <button id="3" onClick="delPath(this.id)">Delete path 3</button>
+   <button id="4" onClick="delPath(this.id)">Delete path 4</button><br>
 
 <hr>
 <h3> Rate Limiter @AIST </h3>
 <button id="startratelimiter">Start Rate Limiter</button><br>
+Set bandwidth [Mbps]: 
+<button id="200" onClick="setBand(this.id)">200Mbps</button>
+<button id="400" onClick="setBand(this.id)">400Mbps</button>
+<button id="600" onClick="setBand(this.id)">600Mbps</button>
+<button id="800" onClick="setBand(this.id)">800Mbps</button><br><br>
+Current configuration:
+<pre><code id=RL></code></pre>
+<!--
 <button id="createrlservicesessions">Create servicesessions</button>
 <button id="deleteallrlservicesessions">Delete ALL service sessions</button><br>
 <p>  <span id="getstatusofratelimiter"></span><br>
+-->
+
 
 </body>
