@@ -17,8 +17,8 @@ player_IP = {
 uv_streamer = [
     {'name':'streamer1', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/POT_PRZYRODA_200Mbps -P 2222 '+player_IP[1],'hostIP':'163.220.30.135','username':'lukaszog','password':''},
     {'name':'streamer2', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/TEARS_OF_STEEL_200Mbps -P 4444 '+player_IP[2],'hostIP':'163.220.30.135','username':'lukaszog','password':''},
-    {'name':'streamer3', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/POT_PRZYRODA_200Mbps -P 6666 '+player_IP[3],'hostIP':'163.220.30.135','username':'lukaszog','password':''},
-    {'name':'streamer4', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/POT_PRZYRODA_200Mbps -P 8888 '+player_IP[4],'hostIP':'163.220.30.135','username':'lukaszog','password':''}]
+    {'name':'streamer3', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/SINTEL_200Mbps -P 6666 '+player_IP[3],'hostIP':'163.220.30.135','username':'lukaszog','password':''},
+    {'name':'streamer4', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/BBB_200Mbps -P 8888 '+player_IP[4],'hostIP':'163.220.30.135','username':'lukaszog','password':''}]
 #    {'name':'streamer2', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 4444 192.168.2.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'},
 #    {'name':'streamer3', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 6666 192.168.3.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'},
 #    {'name':'streamer4', 'command':'/home/felix/UltraGrid/ultragrid/bin/uv --playback POT_PRZYRODA_20Mbps -P 8888 192.168.4.200','hostIP':'127.0.0.1','username':'felix','password':'pcss'}]
@@ -74,13 +74,7 @@ ryu_controller_config = {
 rate_limiter_config = {
     'hostIP':'163.220.30.135',
     'username':'lukaszog',
-    'password':'',
-    'service_session_list':[
-        {'bandwidth': '200mbit', 'destination': '1.1.1.1', 'id':''},
-        {'bandwidth': '400mbit', 'destination': '2.2.2.2', 'id':''},
-        {'bandwidth': '600mbit', 'destination': '3.3.3.3', 'id':''},
-        {'bandwidth': '800mbit', 'destination': '4.4.4.4', 'id':''}
-    ]
+    'password':''
 }    
     
 app = Flask(__name__)
@@ -500,14 +494,16 @@ class RateLimiter(threading.Thread):
         self.connect()
         while 1:
             while self.connected: 
+                '''
                 try:
                     trace = self.channel.recv(4096)
                     print trace
                 except:
                     None
-                          
+                '''          
                 time.sleep(1)
-            print "RL is dead? :("       
+            print "RL is dead? :("  
+            rate_limiter.connect()            
             time.sleep(1)
             
     def connect(self):       
@@ -540,36 +536,48 @@ class RateLimiter(threading.Thread):
     def isConnected(self):
         return self.connected   
         
-    def createServiceSessions(self):
-        print "Rate Limiter: Creation of service session..."
-        for service_session in self.ratelimiterparam['service_session_list']:
-            payload = {'bandwidth':service_session['bandwidth'], 'destination':service_session['destination']}
-            print payload
-            r = requests.post("http://163.220.30.135:8000/flows/", data=payload, auth=('lukaszog','poznanpl'))            
-            print "Status:%s | Response:%s"%(r.status_code, r.json())       
-            if r.status_code == 201:
-                service_session['id'] = "%s"%r.json()['id']
-
-    def getStatusofRL(self): 
+    def getConfofRL(self): 
         r = requests.get("http://163.220.30.135:8000/flows/", auth=('lukaszog','poznanpl')) 
-        return r.json()[0]
-            
-    def getServiceSession(self,number):
-        print "Rate Limiter: getting Service Session..."
-        r = requests.get("http://163.220.30.135:8000/flows/%s/"%(number), auth=('lukaszog','poznanpl'))
-        print "Status:%s | Response:%s"%(r.status_code, r.json())        
+        if r.json() == []:
+            return {"RL Service status": "not created"}
+        else:
+            return r.json()[0]
 
-    def deleteAllServiceSessions(self):     
-        print "Rate Limiter: Delete ALL service session..."
-        for service_session in self.ratelimiterparam['service_session_list']:
-            if service_session['id'] != '': 
-                self.deleteServiceSession(int(service_session['id']))
-        
-    def deleteServiceSession(self,number):
-        print "Rate Limiter: deleting ServiceSession..."
-        r = requests.delete("http://163.220.30.135:8000/flows/%s/"%(number), auth=('lukaszog','poznanpl'))
-        print "Status:%s | Response:%s"%(r.status_code, r.json())     
-        
+    def setBand(self, band):
+        #check if session exist:
+        r = requests.get("http://163.220.30.135:8000/flows/", auth=('lukaszog','poznanpl')) 
+        if r.json() == []:
+            print "RL Session not created"
+            try:                
+                payload = {'bandwidth':str(band)+'mbit', 'destinations':'["'+player_IP[1]+'","'+player_IP[2]+'","'+player_IP[3]+'","'+player_IP[4]+'"]'}
+                header = {'content-type': 'application/json'}
+                r = requests.post("http://163.220.30.135:8000/flows/", data=json.dumps(payload), headers=header, auth=('lukaszog','poznanpl'))            
+                print "Status:%s | Response:%s"%(r.status_code, r.text)                
+            except:
+                print "Sth wrong: RL"
+        else:
+            session_id = r.json()[0]["id"]
+            print "RL session exists - id=%s"%(session_id)
+            try:
+                payload = {'bandwidth':str(band)+'mbit', 'destinations':'["'+player_IP[1]+'","'+player_IP[2]+'","'+player_IP[3]+'","'+player_IP[4]+'"]'}
+                header = {'content-type': 'application/json'}
+                r = requests.put("http://163.220.30.135:8000/flows/"+str(session_id)+"/", data=json.dumps(payload), headers=header, auth=('lukaszog','poznanpl'))            
+                print "Status:%s | Response:%s"%(r.status_code, r.text)                
+            except:
+                print "Sth wrong: RL"
+                
+    def delRLsession(self):
+        try:
+            print "!!!!!!!!!!!!!"
+            r = requests.get("http://163.220.30.135:8000/flows/", auth=('lukaszog','poznanpl')) 
+            if r.json() != []:
+                session_id = r.json()[0]["id"]
+                header = {'content-type': 'application/json'}
+                r = requests.delete("http://163.220.30.135:8000/flows/"+str(session_id)+"/", headers=header, auth=('lukaszog','poznanpl'))
+                print "Status:%s | Response:%s"%(r.status_code, r.text)             
+        except:
+            print "Sth wrong with RL"
+            
     def stop(self):        
         if self.connected:
             print "RL stopping"
@@ -580,6 +588,7 @@ class RateLimiter(threading.Thread):
 #---------------------------------------------------------#
 
 rate_limiter = RateLimiter(rate_limiter_config)
+
 
 #--- Admin Panel -----------------------------------------#      
 @app.route("/demo_proxy_admin_panel")
@@ -629,39 +638,30 @@ def getlistofsw():
     return "Ok"  
 
 # --- RL: --------------------------------------------
-@app.route("/startratelimiter")
-def startratelimiter():  
-    if not rate_limiter.isAlive():
-        rate_limiter.start()
-    else:
-        rate_limiter.connect()
-    return "Ok" 
-    
 @app.route("/setband/<band>")
 def setband(band):    
     if rate_limiter.isAlive():
         rate_limiter.setBand(int(band))
     return "Ok"  
-    
-@app.route("/createrlservicesessions")
-def createrlservicesessions():  
-    if rate_limiter.isAlive():
-        rate_limiter.createServiceSessions()
-    return "Ok"     
 
-@app.route("/deleteallrlservicesessions")
-def deleteallrlservicesessions():  
-    if rate_limiter.isAlive():
-        rate_limiter.deleteAllServiceSessions()
-    return "Ok"         
+@app.route("/getrlstatus")
+def getrlustatus():  
+    return jsonify(result=rate_limiter.isConnected())
     
-@app.route("/getstatusofratelimiter")
-def getstatusofratelimiter():  
+@app.route("/getconfigurationofratelimiter")
+def getconfigurationofratelimiter():  
     if rate_limiter.isAlive():     
-        rl_status = rate_limiter.getStatusofRL()
+        rl_status = rate_limiter.getConfofRL()
         return jsonify(**rl_status)
     return "Ok" 
 
+@app.route("/deleterlsession")
+def deleterlsession():    
+    if rate_limiter.isAlive():
+        rate_limiter.delRLsession()
+    return "Ok"  
+        
+    
 # --- Players: ------------------------------------------   
 @app.route("/startplayers")
 def startplayers():  
@@ -754,8 +754,11 @@ def streamerstatus():
 #---------------------------------------------------------#  
 if __name__ == "__main__":
     
+    rate_limiter.start()
+    
     print "Starting flask service"
     app.run("0.0.0.0")
+ 
  
     #may break by ctrl+c    
     try:

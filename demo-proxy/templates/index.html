@@ -11,8 +11,8 @@
 </script>
 
 <script type=text/javascript>
+    // --- UG-player:
     setInterval(function(){ $.getJSON($SCRIPT_ROOT + '/playerstatus', {}, function(data) {
-        //$("#player").text("UG-player status: " + data.result);
         if (data.isconnected == true){$("#player").text("UG-player is connected ");}
         else{$("#player").text("UG-player not connected ");}
         
@@ -42,6 +42,7 @@
         $("#network").text("Network params: band="+data.band +" Mbps | RTT="+data.rtt+' ms');
     });},1000);      
     
+    // --- Ryu OF CTRL:
     setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getlistofsw',{}, function(data){
         $("#OF_SW").text("List of connected OF switches: "+ data.connected_OF_SW);
     });},1000);  
@@ -50,12 +51,23 @@
          $("#OF").text(JSON.stringify(data, null, '\t'));
     });},1000);
 
-    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getstatusofratelimiter',{}, function(data){
-        //$("#getstatusofratelimiter").text("Status of Rate Limiter: "+ data.result);
-        
+    //RL:
+    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getrlstatus',{}, function(data){
+        if (data.result == true)
+        {
+            $("#getrlstatus").text("RL  is connected ");
+        }
+        else
+        {
+            $("#getrlstatus").text("RL  not connected ");
+        }
+    });},1000);  
+    
+    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getconfigurationofratelimiter',{}, function(data){
         $("#RL").text(JSON.stringify(data, null, '\t'));
     });},1000);  
 
+    // --- Ryu:
     setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getryustatus',{}, function(data){
         if (data.result == true)
         {
@@ -66,7 +78,8 @@
             $("#getryustatus").text("Ryu controller not connected ");
         }
     });},1000); 
-
+    
+    // --- UG - streamer:
     setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/streamerstatus',{}, function(data){
         $("#streamerstatus").text("Streamer status: 1-"+data.result[0]+" | 2-"+data.result[1]+" | 3-"+data.result[2]+" | 4-"+data.result[3]);
     });},1000);      
@@ -80,15 +93,7 @@
         $("#startryucontroller").click( function(){$.get("startryucontroller", function(){
                 console.log("Ryu Controller started" );});
         }); 
-        
-        $("#setpath1").click( function(){$.get("setpath/1", function(){
-            console.log("Set up OF path 1" );});
-        });  
-                
-        $("#delpath1").click( function(){$.get("delpath/1", function(){
-            console.log("Delete OF path 1" );});
-        });  
-         
+                 
         //UG-player: 
         $("#startplayers").click( function(){
             $.get("startplayers", function(){console.log("Players started" );});
@@ -122,18 +127,12 @@
         $("#stopstreamer4").click( function(){
             $.get("stopstreamer/3", function(){console.log("Stream 4 stopped" );});
         });    
-        
+            
         //RL:
-        $("#startratelimiter").click( function(){
-            $.get("startratelimiter", function(){console.log("Rate Limiter started" );});
-        });     
-        $("#createrlservicesessions").click( function(){
-            $.get("createrlservicesessions", function(){console.log("Rate Limiter sessions creation" );});
-        });
-        $("#deleteallrlservicesessions").click( function(){
-            $.get("deleteallrlservicesessions", function(){console.log("Rate Limiter sessions delete - ALL" );});
-        });           
-      
+        $("#deleterlsession").click( function(){
+            $.get("deleterlsession", function(){console.log("RL session removing" );});
+        });         
+        
     });
 </script>
 
@@ -205,19 +204,15 @@ function setBand(band)
 
 <hr>
 <h3> Rate Limiter @AIST </h3>
-<button id="startratelimiter">Start Rate Limiter</button><br>
+<p><span id="getrlstatus"></span><br>
 Set bandwidth [Mbps]: 
 <button id="200" onClick="setBand(this.id)">200Mbps</button>
 <button id="400" onClick="setBand(this.id)">400Mbps</button>
 <button id="600" onClick="setBand(this.id)">600Mbps</button>
-<button id="800" onClick="setBand(this.id)">800Mbps</button><br><br>
+<button id="800" onClick="setBand(this.id)">800Mbps</button><br>
+<button id="deleterlsession">Delete RL session</button><br><br>
 Current configuration:
 <pre><code id=RL></code></pre>
-<!--
-<button id="createrlservicesessions">Create servicesessions</button>
-<button id="deleteallrlservicesessions">Delete ALL service sessions</button><br>
-<p>  <span id="getstatusofratelimiter"></span><br>
--->
 
 
 </body>
