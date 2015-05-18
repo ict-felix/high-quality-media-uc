@@ -1,5 +1,5 @@
 <head>
-    <title>Demo proxy</title>
+    <title>Demo proxy - admin panel</title>
     <meta charset="utf-8">
 </head>    
 
@@ -11,6 +11,9 @@
 </script>
 
 <script type=text/javascript>
+
+    var refresh_interval=3000;
+
     // --- UG-player:
     setInterval(function(){ $.getJSON($SCRIPT_ROOT + '/playerstatus', {}, function(data) {
         if (data.isconnected == true){$("#player").text("UG-player is connected ");}
@@ -28,7 +31,7 @@
         if (data.islive_4 == true){$("#playerlive_4").text("Live streaming #4 on");}
         else {$("#playerlive_4").text("Live streaming #4 off");}
         
-    });},1000);
+    });},refresh_interval);
     
     setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/playerparams/media',{}, function(data){
         $("#stream1").text("Stream 1 params: FPS=" + data.fps1 + " | loss="+data.loss1+ " %");
@@ -36,20 +39,35 @@
         $("#stream3").text("Stream 3 params: FPS=" + data.fps3 + " | loss="+data.loss3+ " %");
         $("#stream4").text("Stream 4 params: FPS=" + data.fps4 + " | loss="+data.loss4+ " %");
         });
-    },1000); 
+    },refresh_interval); 
 
     setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/playerparams/network',{}, function(data){
         $("#network").text("Network params: band="+data.band +" Mbps | RTT="+data.rtt+' ms');
-    });},1000);      
+    });},refresh_interval);      
     
     // --- Ryu OF CTRL:
     setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getlistofsw',{}, function(data){
-        $("#OF_SW").text("List of connected OF switches: "+ data.connected_OF_SW);
-    });},1000);  
+        $("#OF_SW").text("Connected switches: ".concat(JSON.stringify(data.status, null, '\t')));
+    });},refresh_interval);  
     
     setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getflows',{}, function(data){
          $("#OF").text(JSON.stringify(data, null, '\t'));
-    });},1000);
+    });},refresh_interval);
+
+    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getpathnumber',{}, function(data){
+         $("#OF_PATH_NUM").text("Last installed path number: ".concat(JSON.stringify(data.status, null, '\t')));
+    });},refresh_interval);
+
+    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getryustatus',{}, function(data){
+        if (data.status == true)
+        {
+            $("#getryustatus").text("Ryu controller is connected ");
+        }
+        else
+        {
+            $("#getryustatus").text("Ryu controller not connected ");
+        }
+    });},refresh_interval); 
 
     //RL:
     setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getrlstatus',{}, function(data){
@@ -61,30 +79,37 @@
         {
             $("#getrlstatus").text("RL  not connected ");
         }
-    });},1000);  
+    });},refresh_interval);  
     
     setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getconfigurationofratelimiter',{}, function(data){
         $("#RL").text(JSON.stringify(data, null, '\t'));
-    });},1000);  
+    });},refresh_interval);  
 
-    // --- Ryu:
-    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getryustatus',{}, function(data){
-        if (data.result == true)
-        {
-            $("#getryustatus").text("Ryu controller is connected ");
-        }
-        else
-        {
-            $("#getryustatus").text("Ryu controller not connected ");
-        }
-    });},1000); 
-    
     // --- UG - streamer:
     setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/streamerstatus',{}, function(data){
         $("#streamerstatus").text("Streamer status: 1-"+data.result[0]+" | 2-"+data.result[1]+" | 3-"+data.result[2]+" | 4-"+data.result[3]);
-    });},1000);      
+    });},refresh_interval);      
 
-         
+    // --- HQmon:
+    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/HQmonstatus',{}, function(data){       
+        if (data.status == true)
+        {
+            $("#HQmonstatus").text("HQmon is on");
+        }
+        else
+        {
+            $("#HQmonstatus").text("HQmon is off");
+        }
+        if (data.of_path==0){
+            $("#OF_path_number").text("OF path number installed: -");
+        }
+        else
+        {
+            $("#OF_path_number").text("OF path number installed: "+data.of_path);
+        }
+                 
+    });},refresh_interval);    
+    
 </script>
 
 <script>
@@ -92,8 +117,8 @@
         // OF_CTRL:
         $("#startryucontroller").click( function(){$.get("startryucontroller", function(){
                 console.log("Ryu Controller started" );});
-        }); 
-                 
+        });   
+        
         //UG-player: 
         $("#startplayers").click( function(){
             $.get("startplayers", function(){console.log("Players started" );});
@@ -149,70 +174,90 @@ function setBand(band)
 {
     $.get("setband/".concat(band), function(){});     
 }
+function networkApplicationHandle(action)
+{
+   $.get("networkapplication/".concat(action), function(){}); 
+}
 </script>
 
-
-
-<h1>FELIX - Demo proxy</h1>
+<h1>FELIX - High Quality Media Transmission over long-distance networks</h1>
 
 <body>
-<hr>
-<h3> UltraGrid - Player </h3>
-<button id="startplayers">Start players</button>
-<button id="stopplayers">Stop players</button><br>
-  <p><span id=player></span><br>
-  <p><span id=playerlive_1></span><br>
-     <span id=playerlive_2></span><br>
-     <span id=playerlive_3></span><br>
-     <span id=playerlive_4></span><br>
-  <p><span id=stream1></span><br>
-     <span id=stream2></span><br>
-     <span id=stream3></span><br>
-     <span id=stream4></span><br>
+<table style="width:100%" border="1"  cellpadding="10">
+    <col style="width:50%" />
+    <col style="width:50%" />
+  <tr>
+        <td valign="top">
+            <h3> UltraGrid - Player </h3>
+            <button id="startplayers">Start players</button>
+            <button id="stopplayers">Stop players</button><br>
+            <p><span id=player></span><br>
+            <p><span id=playerlive_1></span><br>
+            <span id=playerlive_2></span><br>
+            <span id=playerlive_3></span><br>
+            <span id=playerlive_4></span><br>
+            <p><span id=stream1></span><br>
+            <span id=stream2></span><br>
+            <span id=stream3></span><br>
+            <span id=stream4></span><br>
+        </td>
+        <td valign="top">
+            <h3> UltraGrid - Streamer </h3>
+            <button id="startstreamer1">Start streamer 1</button>
+            <button id="stopstreamer1">Stop streamer 1</button><br>
+            <button id="startstreamer2">Start streamer 2</button>
+            <button id="stopstreamer2">Stop streamer 2</button><br>
+            <button id="startstreamer3">Start streamer 3</button>
+            <button id="stopstreamer3">Stop streamer 3</button><br>
+            <button id="startstreamer4">Start streamer 4</button>
+            <button id="stopstreamer4">Stop streamer 4</button><br>
+            <p>  <span id=streamerstatus></span><br>
+        </td>
+    </tr>
+    <tr>
+        <td valign="top">
+            <h3>HQmon - Smart network application</h3>
+            <button id="HQmonOn"  onClick="networkApplicationHandle(this.id)">HQmon on</button>
+            <button id="HQmonOff" onClick="networkApplicationHandle(this.id)">HQmon off</button>
+            <p><span id="HQmonstatus"></span><br>
+            <p><span id="OF_path_number"></span><br>
+        </td>  
+        <td valign="top">
+            <h3> Network params @UG-player </h3> 
+            <p>  <span id=network></span><br>
+        </td>	        
+    </tr>
+    <tr>
+        <td valign="top" >    
+           <h3> Ryu - OpenFlow Controller </h3>
+           <button id="startryucontroller">Start Ryu Controller</button><br>
+           <p><span id="getryustatus"></span><br>
+           <span id="OF_SW"></span><br>
+           <span id="OF_PATH_NUM"></span><br><br>
+           <button id="1" onClick="setPath(this.id)">Set path 1</button>
+           <button id="2" onClick="setPath(this.id)">Set path 2</button>
+           <button id="3" onClick="setPath(this.id)">Set path 3</button>
+           <button id="4" onClick="setPath(this.id)">Set path 4</button><br>
+           <button id="1" onClick="delPath(this.id)">Delete path 1</button>
+           <button id="2" onClick="delPath(this.id)">Delete path 2</button>
+           <button id="3" onClick="delPath(this.id)">Delete path 3</button>
+           <button id="4" onClick="delPath(this.id)">Delete path 4</button><br>
+           <pre><code id=OF></code></pre>
+        </td> 
+        <td valign="top">
+            <h3> Rate Limiter @AIST </h3>
+            <p><span id="getrlstatus"></span><br>
+            Set bandwidth [Mbps]: 
+            <button id="200" onClick="setBand(this.id)">200Mbps</button>
+            <button id="400" onClick="setBand(this.id)">400Mbps</button>
+            <button id="600" onClick="setBand(this.id)">600Mbps</button>
+            <button id="800" onClick="setBand(this.id)">800Mbps</button><br>
+            <button id="deleterlsession">Delete RL session</button><br><br>
+            Current configuration:
+            <pre><code id=RL></code></pre>
+        </td>        
+    </tr>
 
-<hr>
-<h3> Network params @UG-player </h3> 
-<p>  <span id=network></span><br>
-
-<hr>
-<h3> UltraGrid - Streamer </h3>
-<button id="startstreamer1">Start streamer 1</button>
-<button id="stopstreamer1">Stop streamer 1</button><br>
-<button id="startstreamer2">Start streamer 2</button>
-<button id="stopstreamer2">Stop streamer 2</button><br>
-<button id="startstreamer3">Start streamer 3</button>
-<button id="stopstreamer3">Stop streamer 3</button><br>
-<button id="startstreamer4">Start streamer 4</button>
-<button id="stopstreamer4">Stop streamer 4</button><br>
-    <p>  <span id=streamerstatus></span><br>
-    
-<hr>
-<h3> Ryu - OpenFlow Controller </h3>
-<button id="startryucontroller">Start Ryu Controller</button><br>
-<p><span id="getryustatus"></span><br>
-   <span id="OF_SW"></span><br>
-   <pre><code id=OF></code></pre>
-
-   <button id="1" onClick="setPath(this.id)">Set path 1</button>
-   <button id="2" onClick="setPath(this.id)">Set path 2</button>
-   <button id="3" onClick="setPath(this.id)">Set path 3</button>
-   <button id="4" onClick="setPath(this.id)">Set path 4</button><br>
-   <button id="1" onClick="delPath(this.id)">Delete path 1</button>
-   <button id="2" onClick="delPath(this.id)">Delete path 2</button>
-   <button id="3" onClick="delPath(this.id)">Delete path 3</button>
-   <button id="4" onClick="delPath(this.id)">Delete path 4</button><br>
-
-<hr>
-<h3> Rate Limiter @AIST </h3>
-<p><span id="getrlstatus"></span><br>
-Set bandwidth [Mbps]: 
-<button id="200" onClick="setBand(this.id)">200Mbps</button>
-<button id="400" onClick="setBand(this.id)">400Mbps</button>
-<button id="600" onClick="setBand(this.id)">600Mbps</button>
-<button id="800" onClick="setBand(this.id)">800Mbps</button><br>
-<button id="deleterlsession">Delete RL session</button><br><br>
-Current configuration:
-<pre><code id=RL></code></pre>
-
+</table>  
 
 </body>
