@@ -19,6 +19,7 @@ SUCCESS_CODE_PATH_RELEASED = "Path released"
 SUCCESS_CODE_STREAM_STARTED = "Stream started"
 SUCCESS_CODE_STREAM_STOPED = "Stream stopped"
 SUCCESS_CODE_BAND_SET = "Band set"
+SUCCESS_CODE_INTOPIX= "Intopix succesfuly configured"
   
 
 ERROR_CODE = "Error"
@@ -28,6 +29,7 @@ ERROR_WRONG_PATH_NR = "Error: wrong path number"
 ERROR_CODE_OF_CTRL_NOT_CONNECTED = "Error: Ryu ctrl not connected!"
 ERROR_CODE_RL_NOT_CONNECTED = "Error: RL not connected!"
 ERROR_CODE_BAND_NOT_SET = "Error: Band not set"
+ERROR_INTOPIX = "Error: sth wrong with intopix"
 
 player_IP = {
     1:'150.254.185.246',
@@ -53,69 +55,101 @@ DPID_lists = {
         "tests": [0x777,0x888,0x999]}
 
 uv_streamer = [
-    {'name':'streamer1', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/POT_PRZYRODA_'+STREAM_BAND+' -P 2222 '+player_IP[1],'hostIP':'163.220.30.135','username':'lukaszog','password':''},
-    {'name':'streamer2', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/TEARS_OF_STEEL_'+STREAM_BAND+' -P 4444 '+player_IP[2],'hostIP':'163.220.30.135','username':'lukaszog','password':''},
-    {'name':'streamer3', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/POZNAN_'+STREAM_BAND+' -P 6666 '+player_IP[3],'hostIP':'163.220.30.135','username':'lukaszog','password':''},
-    {'name':'streamer4', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/BBB_'+STREAM_BAND+' -P 8888 '+player_IP[4],'hostIP':'163.220.30.135','username':'lukaszog','password':''}]
+    {'name':'streamer1', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/POZNAN_'+STREAM_BAND+' -P 2222 '+player_IP[1],'hostIP':'163.220.30.135','username':'lukaszog','password':''},
+    {'name':'streamer2', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/BBB_'+STREAM_BAND+' -P 4444 '+player_IP[2],'hostIP':'163.220.30.135','username':'lukaszog','password':''},
+    {'name':'streamer3', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/POT_PRZYRODA_'+STREAM_BAND+' -P 6666 '+player_IP[3],'hostIP':'163.220.30.135','username':'lukaszog','password':''},
+    {'name':'streamer4', 'command':'/home/okazaki/ultragrid/bin/uv --playback /home/okazaki/Videos/TEARS_OF_STEEL_'+STREAM_BAND+' -P 8888 '+player_IP[4],'hostIP':'163.220.30.135','username':'lukaszog','password':''}]
 
 uv_player = {
     'hostIP':'150.254.185.246',
     'username':'player',
-    'password':'!Pcss 4.12',
-    'command_p1':'DISPLAY=:0.1 /home/player/ultragrid/bin/uv -d sdl -P 2222',
+    'password':'',
+    'command_p1':'DISPLAY=:0.1 /home/player/ultragrid/bin/uv -d sdl -r alsa:front:CARD=Intel,DEV=0 -P 2222',
     'command_p2':'DISPLAY=:0.2 /home/player/ultragrid/bin/uv -d sdl -P 4444',
     'command_p3':'DISPLAY=:0.3 /home/player/ultragrid/bin/uv -d sdl -P 6666',
     'command_p4':'DISPLAY=:0.4 /home/player/ultragrid/bin/uv -d sdl -P 8888',
     'command_ifstat':'ifstat -i eth0 -b',
     'command_ping':'ping 163.220.30.135'}
     
+intopix_param = {
+    'hostIP':'150.254.185.243',
+    'username':'intopix',
+    'password':'',
+    'command':'4K3DClient',
+    'command_C':'C',
+    'command_single':'l 1\n',
+    'command_multiple':'l 4\n'
+}
+
 ryu_controller_config = {
     'hostIP':'127.0.0.1',
     'username':'felix',
     'password':'',
     'command_ryu':'PYTHONPATH=/home/felix/felix-demo-tools/ryu /home/felix/felix-demo-tools/ryu/bin/ryu-manager --verbose /home/felix/felix-demo-tools/ryu/ryu/app/ofctl_rest.py',
     'openflow_path':{
-        1:[
-            # Demo C - 180Mbps
-            # --- AIST
-            {'dpid':DPID_lists['AIST'][0],'in_port':'4', 'out_port':'6', 'ip_dst':player_IP_list},
+        1:[ # --- Demo C - 180Mbps ---
+            
             # --- KDDI
-            {'dpid':DPID_lists['KDDI'][0],'in_port':'1', 'out_port':'2', 'ip_dst':player_IP_list},
-            # --- PSNC   
-            {'dpid':DPID_lists['PSNC'][0],'in_port':'21','out_port':'1', 'ip_dst':player_IP_list},
-            {'dpid':DPID_lists['PSNC'][1],'in_port':'1', 'out_port':'7', 'ip_dst':player_IP_list},
-            
-            #i2cat - temp
-            {'dpid':DPID_lists['i2cat'][0],'in_port':'3', 'out_port':'6', 'ip_dst':player_IP_list},
-            {'dpid':DPID_lists['i2cat'][1],'in_port':'1', 'out_port':'3', 'ip_dst':player_IP_list},
-            {'dpid':DPID_lists['i2cat'][2],'in_port':'1', 'out_port':'2', 'ip_dst':player_IP_list},
-            #iMinds - temp
+            {'dpid':DPID_lists['KDDI'][0],'in_port':'1', 'out_port':'3', 'ip_dst':player_IP_list},
+           
+            # --- iMinds - temp
             {'dpid':DPID_lists['iMinds'][0],'in_port':'21', 'out_port':'1', 'ip_dst':player_IP_list},
+
+            # --- PSNC   
+            {'dpid':DPID_lists['PSNC'][1],'in_port':'26','out_port':'7', 'ip_dst':player_IP_list},
             
+          
             # --- Tests
             # - PSNC test slice
-            {'dpid':0x00000881f488f5b0, 'in_port':'28', 'ip_dst':player_IP_list, 'out_port':'29'},
+            #{'dpid':0x00000881f488f5b0, 'in_port':'28', 'ip_dst':player_IP_list, 'out_port':'29'},
             # - Mininet
-            {'dpid':0x777, 'in_port':'1', 'ip_dst':player_IP_list, 'out_port':'2'},            
-            {'dpid':0x777, 'in_port':'2', 'ip_dst':player_IP_list, 'out_port':'1'}
+            #{'dpid':0x777, 'in_port':'1', 'ip_dst':player_IP_list, 'out_port':'2'},            
+            #{'dpid':0x777, 'in_port':'2', 'ip_dst':player_IP_list, 'out_port':'1'}
         ],
-        2:[
-            # Demo C - 200Mbps
-            # --- AIST
+        2:[ # --- Demo C - 200Mbps ---
+            
             # --- KDDI
+            {'dpid':DPID_lists['KDDI'][0],'in_port':'1', 'out_port':'5', 'ip_dst':player_IP_list},
+            
             # --- PSNC
-            # --- iMinds
-            # --- i2cat
+            {'dpid':DPID_lists['PSNC'][1],'in_port':'9','out_port':'7', 'ip_dst':player_IP_list},
+
         ],
-        3:[
+        3:[ # --- Demo C - 220Mbps ---
+            
+            # --- KDDI
+            {'dpid':DPID_lists['KDDI'][0],'in_port':'1', 'out_port':'2', 'ip_dst':player_IP_list},
+
+            # --- PSNC
+            {'dpid':DPID_lists['PSNC'][0],'in_port':'21','out_port':'1', 'ip_dst':player_IP_list},
+            {'dpid':DPID_lists['PSNC'][1],'in_port':'1','out_port':'7', 'ip_dst':player_IP_list},
+
             # --- Tests   
-            {'dpid':0x888, 'in_port':'1', 'ip_dst':player_IP_list, 'out_port':'7'}
+            #{'dpid':0x888, 'in_port':'1', 'ip_dst':player_IP_list, 'out_port':'7'}
         ],
-        4:[
+        4:[ # --- Demo C - 240Mbps ---
+            
+            # --- KDDI
+            #{'dpid':DPID_lists['KDDI'][0],'in_port':'1', 'out_port':'4', 'ip_dst':player_IP_list},
+            
+            # --- i2cat 
+            {'dpid':DPID_lists['i2cat'][2],'in_port':'6', 'out_port':'1', 'ip_dst':player_IP_list},
+            {'dpid':DPID_lists['i2cat'][0],'in_port':'3', 'out_port':'6', 'ip_dst':player_IP_list},
+            
+            # --- PSNC
+            {'dpid':DPID_lists['PSNC'][1],'in_port':'27','out_port':'7', 'ip_dst':player_IP_list},
+
             # --- Tests   
-            {'dpid':0x777, 'in_port':'1', 'ip_dst':player_IP_list, 'out_port':'7'}
-        ]
+            #{'dpid':0x777, 'in_port':'1', 'ip_dst':player_IP_list, 'out_port':'7'}
+        ],
         
+
+        #for demo D (multiple streams):
+        5:[],
+        6:[],
+        7:[],
+        8:[]
+    
     },
     'of_sw_list' : [ 
         DPID_lists['AIST'][0],
@@ -265,8 +299,11 @@ class RyuController(threading.Thread):
         return self.connected   
 
     def getLastPathNumber(self):
-        return self.last_path_number
-        
+        if self.last_path_number>0:
+            return self.last_path_number-4 # for demo D paths 5-8
+        else:
+            return None
+
     def getFlows(self):
         flows = {}
         for of_sw in self.ryuparam['of_sw_list']:
@@ -429,6 +466,76 @@ streamer4 = UGstreamer(uv_streamer[3])
 
 streamer_list=[streamer1,streamer2,streamer3,streamer4]
 #---------------------------------------------------------#
+class Intopix(threading.Thread):
+    def __init__(self, param):
+        threading.Thread.__init__(self)
+        self.connected=False
+        self.active = True
+        self.param=param
+        
+    def run(self):
+        self.connect()
+        while self.active:
+            while self.connected: 
+
+                time.sleep(1)
+            print "Waiting for connection with intopix..."      
+            time.sleep(1)
+            
+    def connect(self):       
+        try:
+            self.ssh = paramiko.SSHClient()
+            self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+
+            ki = paramiko.RSAKey.from_private_key_file('/home/felix/.ssh/id_rsa')
+            print "Trying to connect with intopix %s ...."
+            self.ssh.connect(self.param['hostIP'], timeout=60, username=self.param['username'], pkey=ki)
+            print "Connection with intopix established"
+        
+        except:  
+            print "Error: sth wrong during connection with the intopix"
+            return
+        try:    
+            self.channel = self.ssh.get_transport().open_session()
+            self.channel.get_pty()
+            self.channel.exec_command(self.param['command']) 
+            self.channel.send(self.param['command_C'])  
+            print "SSH channel created with intopix"
+        except:  
+            print "Error: sth wrong during command execution into intopix"
+            return
+        self.connected = True
+     
+    def demoC(self):
+        print "Setting single screen"
+        try:    
+            self.channel.send(self.param['command_single']) 
+        except: 
+            print ERROR_INTOPIX
+            return ERROR_INTOPIX
+        return SUCCESS_CODE_INTOPIX 
+
+    def demoD(self):
+        print "Setting multi screens"
+        try:    
+            self.channel.send(self.param['command_multiple']) 
+        except: 
+            print ERROR_INTOPIX
+            return ERROR_INTOPIX
+        return SUCCESS_CODE_INTOPIX 
+
+    def stop(self):        
+        if self.connected:
+            print "Intopix stopping"
+            self.ssh.close()  
+            self.channel.close() 
+            self.connected=False
+            print "Intopix stopped"
+#---------------------------------------------------------#
+intopix = Intopix(intopix_param) 
+intopix.start()
+#---------------------------------------------------------#
 class UGplayer(threading.Thread):
     def __init__(self, uvparam):
         threading.Thread.__init__(self)
@@ -436,11 +543,11 @@ class UGplayer(threading.Thread):
         self.active = True
         self.uvparam=uvparam
         self.params ={
-            'network':{'band':None,'rtt':None},
-            'player1':{'fps':None,'loss':None},
-            'player2':{'fps':None,'loss':None},
-            'player3':{'fps':None,'loss':None},
-            'player4':{'fps':None,'loss':None}
+            'network':{'band':0,'rtt':0},
+            'player1':{'fps':0,'loss':0},
+            'player2':{'fps':0,'loss':0},
+            'player3':{'fps':0,'loss':0},
+            'player4':{'fps':0,'loss':0}
         }
         self.livestreaming_cntr_on = 5
         self.livestreaming_cntr = [0,0,0,0]
@@ -764,62 +871,113 @@ class HQmon(threading.Thread):
         self.delay_after_network_change_treshold = 10 # min time after network rearrangements before monitoring again
         self.FPS_treshold = 21                        
         self.loss_treshold = 1
-        self.lowQcounter_treshold = 1                 # how long LowQ exists
+        self.lowQcounter_treshold = 2                 # how long LowQ exists
         
-        self.path_installed = None      
+        self.path_installed = None   
+        self.band_set = None
+        self.band={5:25, 6:55, 7:85, 8:115}   
+
+        '''
+        #stop all transmission (if any)
+        for streamer in streamer_list:
+            if streamer.isAlive():
+                streamer.stop()
         
+        #run multiple screens:
+        intopix.demoD()
+
+        #run OF ctrl
+        ryu_controller.start()
+
+        #run rate-limiter
+        rate_limiter.start()
+        '''
+     
     def run(self):
         
         while self.active:        
             while self.on:
 
-                #check OF network (which path installed) :
                 if ryu_controller.isAlive():
-                    self.path_installed = ryu_controller.getLastPathNumber()
-                        
-                if player.isConnected():
-                     
-                    # change in OF network should not be trigger too fast
-                    # wait delay_after_network_change_treshold before next change
-                    if self.delay_after_network_change < self.delay_after_network_change_treshold:
-                        self.delay_after_network_change = self.delay_after_network_change+1
-        
-                    # Stream should be visualized at least delay_time_treshold      
-                    # because of unstable monitoring results at the beginning 
-                    for i in range(4):
-                        if player.isLifeStreamingOn(i)==True:
-                            if self.delay_time[i]<self.delay_time_treshold:
-                                self.delay_time[i] = self.delay_time[i] + 1       
-                  
-                    # app check if low quality remains at least lowQcounter_treshold
-                    if (((self.delay_time[0]==self.delay_time_treshold)and((player.isLifeStreamingOn(0))and((player.getFPS('player1')<self.FPS_treshold)or(player.getLoss('player1')>self.loss_treshold))))or
-                        ((self.delay_time[1]==self.delay_time_treshold)and((player.isLifeStreamingOn(1))and((player.getFPS('player2')<self.FPS_treshold)or(player.getLoss('player2')>self.loss_treshold))))or
-                        ((self.delay_time[2]==self.delay_time_treshold)and((player.isLifeStreamingOn(2))and((player.getFPS('player3')<self.FPS_treshold)or(player.getLoss('player3')>self.loss_treshold))))or
-                        ((self.delay_time[3]==self.delay_time_treshold)and((player.isLifeStreamingOn(3))and((player.getFPS('player4')<self.FPS_treshold)or(player.getLoss('player4')>self.loss_treshold))))):
-                        if self.lowQcounter<self.lowQcounter_treshold:
-                            self.lowQcounter = self.lowQcounter + 1
-                    else:
-                        self.lowQcounter = 0
+                    if rate_limiter.isAlive():
                                             
-                    # in case of lowQ -> network rearrangements
-                    # but min delay_after_network_change_treshold after previus change
-                    if ((self.delay_after_network_change==self.delay_after_network_change_treshold)and(self.lowQcounter == self.lowQcounter_treshold)):
-                        self.delay_after_network_change = 0
-                        self.lowQcounter = 0
-                        print "\n----------- OF path should be changed -------------"
-                        if ryu_controller.isAlive():
-                            if (self.path_installed==None):
-                                ryu_controller.setPath(1)
+                        if ((ryu_controller.getLastPathNumber()!=None)and(self.band_set!=None)and(player.isConnected())):
 
-                            elif(ryu_controller.getMaxPathID()>int(self.path_installed)):
-                                #del old path:
-                                ryu_controller.delPath(int(self.path_installed))
-                                #set up new path:
-                                ryu_controller.setPath(int(self.path_installed)+1)
-                                
+                            self.path_installed = ryu_controller.getLastPathNumber()+4 #for demo D paths 5-8
+                             
+                            # change in OF network should not be trigger too fast
+                            # wait delay_after_network_change_treshold before next change
+                            if self.delay_after_network_change < self.delay_after_network_change_treshold:
+                                self.delay_after_network_change = self.delay_after_network_change+1
+                
+                            # Stream should be visualized at least delay_time_treshold      
+                            # because of unstable monitoring results at the beginning 
+                            for i in range(4):
+                                if player.isLifeStreamingOn(i)==True:
+                                    if self.delay_time[i]<self.delay_time_treshold:
+                                        self.delay_time[i] = self.delay_time[i] + 1       
+                          
+                            # app check if low quality remains at least lowQcounter_treshold
+                            if (((self.delay_time[0]==self.delay_time_treshold)and((player.isLifeStreamingOn(0))and((player.getFPS('player1')<self.FPS_treshold)or(player.getLoss('player1')>self.loss_treshold))))or
+                                ((self.delay_time[1]==self.delay_time_treshold)and((player.isLifeStreamingOn(1))and((player.getFPS('player2')<self.FPS_treshold)or(player.getLoss('player2')>self.loss_treshold))))or
+                                ((self.delay_time[2]==self.delay_time_treshold)and((player.isLifeStreamingOn(2))and((player.getFPS('player3')<self.FPS_treshold)or(player.getLoss('player3')>self.loss_treshold))))or
+                                ((self.delay_time[3]==self.delay_time_treshold)and((player.isLifeStreamingOn(3))and((player.getFPS('player4')<self.FPS_treshold)or(player.getLoss('player4')>self.loss_treshold))))):
+                                if self.lowQcounter<self.lowQcounter_treshold:
+                                    self.lowQcounter = self.lowQcounter + 1
                             else:
-                                print "No better OF path available"
+                                self.lowQcounter = 0
+                                                    
+                            # in case of lowQ -> network rearrangements
+                            # but min delay_after_network_change_treshold after previus change
+                            if(self.lowQcounter == self.lowQcounter_treshold):
+                                print "----------------------------------------------------------"
+                                print "HQmon: observable Low Quality of the displayed HD content!"
+                                
+                                if (self.delay_after_network_change==self.delay_after_network_change_treshold):
+                                    print "HQmon: %s sec after previous network rearrangements"%(self.delay_after_network_change_treshold)
+                                    print "HQmon: OF path should be changed! Currently intalled path: %s"%(self.path_installed)
+                                    
+
+                                    if(int(self.path_installed)<8):
+                                        #del old path:
+                                        print "HQmon: deleting old OF path"
+                                        ryu_controller.delPath(int(self.path_installed))
+                                        
+                                        #set up new path:
+                                        print "HQmon: setting up new OF path: %s"%(int(self.path_installed)+1)
+                                        ryu_controller.setPath(int(self.path_installed)+1)
+
+                                        if rate_limiter.isAlive():
+                                            print "HQmon: setting up new band: %s"%(self.band[self.path_installed+1])
+                                            #set up new band:
+                                            rate_limiter.setBand(self.band[self.path_installed+1])
+                                        else:
+                                            print "HQmon error:RL not alive"
+                        
+
+                                        self.lowQcounter = 0
+                                        self.delay_after_network_change = 0
+                                        
+                                    else:
+                                        print "HQmon: No better OF path available!"
+
+                        else:
+                            if ryu_controller.getLastPathNumber()==None:
+                                # set up basic path (first path):
+                                add_status=ryu_controller.setPath(5)
+                                print "HQmon: set up first path status: %s"%(add_status)
+
+                            if self.band_set==None:
+                                print "HQmon: setting up new band"
+                                rate_limiter.setBand(self.band[5])
+                                self.band_set = self.band[5]
                     
+                    else:
+                        print "HQmon error:RL not alive!"
+                
+                else:
+                    print "HQmon error: OF CTRL not alive!"    
+
                 time.sleep(1)
             
             time.sleep(1)
@@ -1033,7 +1191,18 @@ def playerparams(resource):
     except:
         return jsonify(result="error")       
     return "Ok"
-        
+
+# --- intopix------ -----------------------------------
+@app.route("/intopixsingle")
+@crossdomain(origin='*')
+def intopixsingle():     
+    return jsonify(status=intopix.demoC()) 
+
+@app.route("/intopixmulti")
+@crossdomain(origin='*')
+def intopixmulti():     
+    return jsonify(status=intopix.demoD()) 
+
 # --- UG - streamer -----------------------------------
 @app.route("/startstreamer/<nr>")
 @crossdomain(origin='*')
