@@ -109,7 +109,7 @@ ryu_controller_config = {
         2:[ # --- Demo C - 200Mbps ---
             
             # --- KDDI
-            {'dpid':DPID_lists['KDDI'][0],'in_port':'1', 'out_port':'5', 'ip_dst':player_IP_list},
+            #{'dpid':DPID_lists['KDDI'][0],'in_port':'1', 'out_port':'5', 'ip_dst':player_IP_list},
             
             # --- PSNC
             {'dpid':DPID_lists['PSNC'][1],'in_port':'9','out_port':'7', 'ip_dst':player_IP_list},
@@ -170,7 +170,8 @@ rate_limiter_config = {
     'hostIP':'163.220.30.135',
     'username':'lukaszog',
     'password':''
-}    
+}  
+
 app = Flask(__name__)   
 #---------------------------------------------------------#
 def crossdomain(origin=None, methods=None, headers=None,
@@ -318,6 +319,35 @@ class RyuController(threading.Thread):
     def addFlow(self, dpid, in_port, ip_dst, out_port):
         eth_type_list = [0x800, 0x806]
         for eth_type in eth_type_list:
+            
+
+            match_rule = {
+                "in_port":in_port,
+                "dl_type": eth_type,
+                "nw_dst": ip_dst                    
+            }
+
+            if (int(dpid==DPID_lists['PSNC'][1]))and(int(out_port)==7):
+ 
+                action_type= [
+                    {
+                        "type": "STRIP_VLAN"
+                    },
+                    {
+                        "type":"OUTPUT",
+                        "port":out_port
+                    }
+                ]
+
+            else:
+
+                action_type= [
+                    {
+                        "type":"OUTPUT",
+                        "port":out_port
+                    }
+                ]
+
             payload = {
                 "dpid":dpid,
                 "cookie":1,
@@ -329,17 +359,8 @@ class RyuController(threading.Thread):
                 #"hard_timeout":60,
                 "priority":1,
                 "flags":1,
-                "match":{
-                    "in_port":in_port,
-                    "dl_type": eth_type,
-                    "nw_dst": ip_dst
-                },
-                "actions":[
-                    {
-                        "type":"OUTPUT",
-                        "port":out_port
-                    }
-                ]
+                "match":match_rule,
+                "actions":action_type
             }
             response = requests.post('http://10.134.0.236:8080/stats/flowentry/add',
                             data=json.dumps(payload))  
@@ -352,6 +373,34 @@ class RyuController(threading.Thread):
     def delFlow(self, dpid, in_port, ip_dst, out_port):
         eth_type_list = [0x800, 0x806]
         for eth_type in eth_type_list:
+
+            match_rule = {
+                "in_port":in_port,
+                "dl_type": eth_type,
+                "nw_dst": ip_dst                    
+            }
+
+            if (int(dpid==DPID_lists['PSNC'][1]))and(int(out_port)==7):
+ 
+                action_type= [
+                    {
+                        "type": "STRIP_VLAN"
+                    },
+                    {
+                        "type":"OUTPUT",
+                        "port":out_port
+                    }
+                ]
+
+            else:
+
+                action_type= [
+                    {
+                        "type":"OUTPUT",
+                        "port":out_port
+                    }
+                ]
+
             payload = {
                 "dpid":dpid,
                 "cookie":1,
@@ -363,17 +412,8 @@ class RyuController(threading.Thread):
                 #"hard_timeout":60,
                 "priority":1,
                 "flags":1,
-                "match":{
-                    "in_port":in_port,
-                    "dl_type": eth_type,
-                    "nw_dst": ip_dst
-                },
-                "actions":[
-                    {
-                        "type":"OUTPUT",
-                        "port":out_port
-                    }
-                ]
+                "match":match_rule,
+                "actions":action_type
             }
             response = requests.post('http://10.134.0.236:8080/stats/flowentry/delete',
                             data=json.dumps(payload))  
@@ -868,15 +908,17 @@ class HQmon(threading.Thread):
         self.lowQcounter = 0 
         
         self.delay_time_treshold = 10                 # min time movie is play at the beginning before app measure params
-        self.delay_after_network_change_treshold = 10 # min time after network rearrangements before monitoring again
+        self.delay_after_network_change_treshold = 15 # min time after network rearrangements before monitoring again
         self.FPS_treshold = 21                        
         self.loss_treshold = 1
-        self.lowQcounter_treshold = 2                 # how long LowQ exists
+        self.lowQcounter_treshold = 10                 # how long LowQ exists
         
         self.path_installed = None   
         self.band_set = None
-        self.band={5:25, 6:55, 7:85, 8:115}   
+        self.band={5:30, 6:55, 7:85, 8:115}   
 
+        self.min_path_number = 5
+        self.max_path_number = 8
         '''
         #stop all transmission (if any)
         for streamer in streamer_list:
@@ -938,7 +980,7 @@ class HQmon(threading.Thread):
                                     print "HQmon: OF path should be changed! Currently intalled path: %s"%(self.path_installed)
                                     
 
-                                    if(int(self.path_installed)<8):
+                                    if(int(self.path_installed)<self.max_path_number):
                                         #del old path:
                                         print "HQmon: deleting old OF path"
                                         ryu_controller.delPath(int(self.path_installed))
@@ -964,13 +1006,13 @@ class HQmon(threading.Thread):
                         else:
                             if ryu_controller.getLastPathNumber()==None:
                                 # set up basic path (first path):
-                                add_status=ryu_controller.setPath(5)
+                                add_status=ryu_controller.setPath(self.min_path_number)
                                 print "HQmon: set up first path status: %s"%(add_status)
 
                             if self.band_set==None:
-                                print "HQmon: setting up new band"
-                                rate_limiter.setBand(self.band[5])
-                                self.band_set = self.band[5]
+                                print "HQmon: setting up the bacic band"
+                                rate_limiter.setBand(self.band[self.min_path_number])
+                                self.band_set = self.band[self.min_path_number]
                     
                     else:
                         print "HQmon error:RL not alive!"
