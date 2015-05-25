@@ -178,6 +178,11 @@ function networkApplicationHandle(action)
 {
    $.get("networkapplication/".concat(action), function(){}); 
 }
+function switchPage(action)
+{
+   $.get("/".concat(action), function(){}); 
+}
+
 </script>
 
 <h1>FELIX - High Quality Media Transmission over long-distance networks</h1>
@@ -234,6 +239,7 @@ function networkApplicationHandle(action)
            <p><span id="getryustatus"></span><br>
            <span id="OF_SW"></span><br>
            <span id="OF_PATH_NUM"></span><br><br>
+           <button id="of_short" onClick="switchPage(this.id)">Short version</button>
            <button id="1" onClick="setPath(this.id)">Set path 1</button>
            <button id="2" onClick="setPath(this.id)">Set path 2</button>
            <button id="3" onClick="setPath(this.id)">Set path 3</button>

@@ -4,7 +4,7 @@
 # Lukasz Ogrodowczyk (PSNC) <lukaszog_at_man.poznan.pl>
 
 import os, paramiko, time, sys, threading, socket, datetime
-from flask import Flask,jsonify, render_template, request, make_response, current_app
+from flask import Flask,jsonify, render_template, request, make_response, current_app, redirect
 import requests, json
 from datetime import timedelta
 from functools import update_wrapper
@@ -109,7 +109,7 @@ ryu_controller_config = {
         2:[ # --- Demo C - 200Mbps ---
             
             # --- KDDI
-            #{'dpid':DPID_lists['KDDI'][0],'in_port':'1', 'out_port':'5', 'ip_dst':player_IP_list},
+            {'dpid':DPID_lists['KDDI'][0],'in_port':'1', 'out_port':'5', 'ip_dst':player_IP_list},
             
             # --- PSNC
             {'dpid':DPID_lists['PSNC'][1],'in_port':'9','out_port':'7', 'ip_dst':player_IP_list},
@@ -130,7 +130,7 @@ ryu_controller_config = {
         4:[ # --- Demo C - 240Mbps ---
             
             # --- KDDI
-            #{'dpid':DPID_lists['KDDI'][0],'in_port':'1', 'out_port':'4', 'ip_dst':player_IP_list},
+            {'dpid':DPID_lists['KDDI'][0],'in_port':'1', 'out_port':'4', 'ip_dst':player_IP_list},
             
             # --- i2cat 
             {'dpid':DPID_lists['i2cat'][2],'in_port':'6', 'out_port':'1', 'ip_dst':player_IP_list},
@@ -145,10 +145,44 @@ ryu_controller_config = {
         
 
         #for demo D (multiple streams):
-        5:[],
-        6:[],
-        7:[],
-        8:[]
+        5:[
+            # --- KDDI
+            {'dpid':DPID_lists['KDDI'][0],'in_port':'1', 'out_port':'3', 'ip_dst':player_IP_list},
+           
+            # --- iMinds - temp
+            {'dpid':DPID_lists['iMinds'][0],'in_port':'21', 'out_port':'1', 'ip_dst':player_IP_list},
+
+            # --- PSNC   
+            {'dpid':DPID_lists['PSNC'][1],'in_port':'26','out_port':'7', 'ip_dst':player_IP_list},
+        ],
+        6:[
+            # --- KDDI
+            {'dpid':DPID_lists['KDDI'][0],'in_port':'1', 'out_port':'5', 'ip_dst':player_IP_list},
+            
+            # --- PSNC
+            {'dpid':DPID_lists['PSNC'][1],'in_port':'9','out_port':'7', 'ip_dst':player_IP_list},
+        ],
+        7:[
+            # --- KDDI
+            {'dpid':DPID_lists['KDDI'][0],'in_port':'1', 'out_port':'2', 'ip_dst':player_IP_list},
+
+            # --- PSNC
+            {'dpid':DPID_lists['PSNC'][0],'in_port':'21','out_port':'1', 'ip_dst':player_IP_list},
+            {'dpid':DPID_lists['PSNC'][1],'in_port':'1','out_port':'7', 'ip_dst':player_IP_list},
+
+        ],
+        8:[
+            # --- KDDI
+            {'dpid':DPID_lists['KDDI'][0],'in_port':'1', 'out_port':'4', 'ip_dst':player_IP_list},
+            
+            # --- i2cat 
+            {'dpid':DPID_lists['i2cat'][2],'in_port':'6', 'out_port':'1', 'ip_dst':player_IP_list},
+            {'dpid':DPID_lists['i2cat'][0],'in_port':'3', 'out_port':'6', 'ip_dst':player_IP_list},
+            
+            # --- PSNC
+            {'dpid':DPID_lists['PSNC'][1],'in_port':'27','out_port':'7', 'ip_dst':player_IP_list},
+
+        ]
     
     },
     'of_sw_list' : [ 
@@ -1075,6 +1109,10 @@ flask_app.start()
 @app.route("/demo_proxy_admin_panel")
 def hello():
     return render_template('index.html')
+
+@app.route("/of_short")
+def hello_short_of():
+    return render_template('OpenFlowControler.html')
 
 # --- OpenFlow Controller - Ryu ---------------------------
 @app.route("/startryucontroller")

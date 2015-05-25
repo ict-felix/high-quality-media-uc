@@ -1,0 +1,112 @@
+<head>
+    <title>Demo proxy - admin panel</title>
+    <meta charset="utf-8">
+</head>    
+
+<script type=text/javascript src="{{
+  url_for('static', filename='jquery.js') }}"></script>
+  
+<script type=text/javascript>
+  $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+</script>
+
+<script type=text/javascript>
+
+    var refresh_interval=3000;
+     
+    
+    // --- Ryu OF CTRL:
+    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getlistofsw',{}, function(data){
+        $("#OF_SW").text("Connected switches: ".concat(JSON.stringify(data.status, null, '\t')));
+    });},1010);  
+    
+    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getflows',{}, function(data){
+         $("#OF").text(JSON.stringify(data, null, '\t'));
+    });},1020);
+
+    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getpathnumber',{}, function(data){
+         $("#OF_PATH_NUM").text("Last installed path number: ".concat(JSON.stringify(data.status, null, '\t')));
+    });},1030);
+
+    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getryustatus',{}, function(data){
+        if (data.status == true)
+        {
+            $("#getryustatus").text("Ryu controller is connected ");
+        }
+        else
+        {
+            $("#getryustatus").text("Ryu controller not connected ");
+        }
+    });},1040); 
+
+
+
+    //RL:
+    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getrlstatus',{}, function(data){
+        if (data.result == true)
+        {
+            $("#getrlstatus").text("RL  is connected ");
+        }
+        else
+        {
+            $("#getrlstatus").text("RL  not connected ");
+        }
+    });},3010);  
+    
+    setInterval (function(){ $.getJSON($SCRIPT_ROOT + '/getconfigurationofratelimiter',{}, function(data){
+        $("#RL").text(JSON.stringify(data, null, '\t'));
+    });},3020);  
+
+
+
+  
+    
+</script>
+
+<script>
+    $(document).ready(function(){
+        // OF_CTRL:
+        $("#startryucontroller").click( function(){$.get("startryucontroller", function(){
+                console.log("Ryu Controller started" );});
+        });      
+            
+        //RL:
+        $("#deleterlsession").click( function(){
+            $.get("deleterlsession", function(){console.log("RL session removing" );});
+        });         
+        
+    });
+</script>
+
+
+
+<h1>FELIX - High Quality Media Transmission over long-distance networks</h1>
+
+<body>
+<table style="width:100%" border="1"  cellpadding="10">
+    <col style="width:50%" />
+    <col style="width:50%" />
+
+
+    <tr>
+        <td valign="top" >    
+           <h3> Ryu - OpenFlow Controller </h3>
+           <p><span id="getryustatus"></span><br>
+           <span id="OF_SW"></span><br>
+           <span id="OF_PATH_NUM"></span><br><br>
+
+           <pre><code id=OF></code></pre>
+        </td> 
+        <td valign="top">
+            <h3> Rate Limiter @AIST </h3>
+            <p><span id="getrlstatus"></span><br>
+            Set bandwidth [Mbps]: 
+
+            Current configuration:
+            <pre><code id=RL></code></pre>
+        </td>        
+    </tr>
+
+</table>  
+
+</body>
