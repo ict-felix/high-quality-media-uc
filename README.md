@@ -1,2 +1,2 @@
 # felix-demo-tools
-FELIX demo tools
+FELIX software tools for implementation one of the project use case: "High Quality Media Transmission over long-distance networks". It allows to perform two experiments in a large scale network built on demand over European and Japan infrastructure: i) examining long distance network capabilities and evaluating user experience (QoE), and ii) examining a new intelligent network application to control high quality media streaming. Demo-proxy is a module between SDN network application, monitoring system, rate-limiter, UltraGrid software and GUI for experimenter.
